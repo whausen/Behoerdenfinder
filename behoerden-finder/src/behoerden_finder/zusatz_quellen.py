@@ -253,9 +253,10 @@ class WebseitenClient:
     @staticmethod
     def _aus_text(html: str) -> str | None:
         text = _html_text(html)
-        for m in _SCHLUESSEL.finditer(text):
+       for m in _SCHLUESSEL.finditer(text):
             abschnitt = text[m.start(): m.start() + 700]
-            if oz.parse(abschnitt):
+            week = oz.parse(abschnitt)
+            if week and any(week):
                 return abschnitt
         return None
 
