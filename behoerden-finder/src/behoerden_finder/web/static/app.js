@@ -183,13 +183,14 @@ function zeige(d) {
     if (k.web) karteEintrag.append(el("p", {}, link(k.web, "Webseite")));
     const dist = entfernung(m.distance_m);
     if (dist) karteEintrag.append(el("p", { class: "quelle", text: dist }));
+    const hinweise = el("ul", { class: "hinweise" });
     const leistungsportal = d.leistung?.details?.portal?.[0];
     if (leistungsportal?.uri) {
-      karteEintrag.append(el("p", { class: "quelle" },
+      hinweise.append(el("li", {},
         link(leistungsportal.uri, "Leistungsbeschreibung im Serviceportal")));
     }
     if (m.source_id) {
-      karteEintrag.append(el("p", { class: "quelle" }, "Datenquelle der Behördenzuordnung: " + m.source_id,
+      hinweise.append(el("li", {}, "Datenquelle der Behördenzuordnung: " + m.source_id,
         m.evidence_url ? " · " : null, m.evidence_url ? link(m.evidence_url, "Datenquelle öffnen") : null));
     }
     const extra = el("div", { class: "extra" });
@@ -197,8 +198,9 @@ function zeige(d) {
                            text: "Route in Google Maps" });
     karteEintrag.append(extra, navi);
     if (teile.filter((t) => t.classList && t.classList.contains("behoerde")).length < 3)
-      zusatzinfos(m, extra, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline);
-    teile.push(karteEintrag);
+      zusatzinfos(m, extra, hinweise, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline);
+    hinweise.hidden = !hinweise.childElementCount;
+    teile.push(karteEintrag, hinweise);
   }
   if (treffer.length > 5) teile.push(el("p", { class: "meta", text: `… und ${treffer.length - 5} weitere` }));
   if (d.fehler) teile.push(el("p", { class: "fehler", text: d.fehler }));
@@ -256,7 +258,7 @@ function zeigeStatus(marke, intervalle) {
   if (aktualisieren()) { const t = setInterval(() => { if (!aktualisieren()) clearInterval(t); }, 60000); }
 }
 
-async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika, zeigeOnline) {
+async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika, zeigeOnline) {
   const z = m.zentrum || (standort ? { lat: standort.lat, lon: standort.lon } : null);
   ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten werden geladen …" }));
   let g;
@@ -274,7 +276,8 @@ async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika, zeigeOnl
   if (a.oeffnungszeiten) g = { ...(g || {}), verfuegbar: true, gefunden: true, oeffnungszeiten: a.oeffnungszeiten,
                                intervalle: a.intervalle, zeiten_quelle: a.zeiten_quelle, zeiten_text: a.zeiten_text };
   if (!g || !g.verfuegbar || !g.gefunden) {
-    ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten: in den offenen Daten nicht gefunden – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.append(el("li", { text: "Öffnungszeiten: in den offenen Daten nicht gefunden – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.hidden = false;
     return;
   }
   navi.href = navigationsLink(m, g, standort);
@@ -290,7 +293,8 @@ async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika, zeigeOnl
     if (g.zeiten_text) ziel.append(el("p", { class: "quelle", text: "Originalangabe: „" + g.zeiten_text + "“" }));
     if (statusMarke) zeigeStatus(statusMarke, g.intervalle);
   } else {
-    ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten: in den offenen Daten nicht eingetragen – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.append(el("li", { text: "Öffnungszeiten: in den offenen Daten nicht eingetragen – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.hidden = false;
   }
   if (g.telefon && !k.telefon) ziel.append(el("p", {}, "Tel. ", el("a", { href: "tel:" + g.telefon.replace(/[^\d+]/g, ""), text: g.telefon })));
   if (g.web && !k.web) ziel.append(el("p", {}, link(g.web, "Webseite")));
