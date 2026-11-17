@@ -132,7 +132,10 @@ class App:
         if self.places is not None and (adresse or punkt):
             try:
                 g = self.places.details(name, adresse, zentrum, punkt=punkt)
-                if g.get("gefunden"):
+                trefferadresse = str(g.get("adresse") or "")
+                normalisiert = lambda text: re.sub(r"\W+", "", text.casefold())
+                passt = not adresse or normalisiert(adresse) == normalisiert(trefferadresse)
+                if g.get("gefunden") and passt:
                     out.update(g)
                     if g.get("oeffnungszeiten"):
                         out["zeiten_quelle"] = {"osm": "OpenStreetMap", "google": "Google"}.get(g.get("quelle"), g.get("quelle"))

@@ -200,13 +200,13 @@ function zeige(d) {
 function navigationsLink(m, g, standort) {
   const p = new URLSearchParams({ api: "1", travelmode: "transit" });
   const k = m.kontakt || {};
-  if (g && g.gefunden && (g.adresse || g.place_id || g.lat == null)) {
+  if (k.adresse) {
+    p.set("destination", k.adresse);
+  } else if (g && g.gefunden && (g.adresse || g.place_id || g.lat == null)) {
     p.set("destination", g.adresse ? `${g.name || m.authority_name || ""}, ${g.adresse}` : (g.name || m.authority_name));
     if (g.place_id) p.set("destination_place_id", g.place_id);
   } else if (g && g.gefunden) {
     p.set("destination", `${g.lat},${g.lon}`);
-  } else if (k.adresse) {
-    p.set("destination", `${m.authority_name || ""}, ${k.adresse}`);
   } else if (m.geometry && m.geometry.type === "Point") {
     p.set("destination", `${m.geometry.coordinates[1]},${m.geometry.coordinates[0]}`);
   } else {
@@ -268,7 +268,7 @@ async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika) {
   }
   navi.href = navigationsLink(m, g, standort);
   const k = m.kontakt || {};
-  if (g.adresse) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
+  if (g.adresse && !k.adresse) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
   if (g.oeffnungszeiten && g.oeffnungszeiten.length) {
     const heute = (new Date().getDay() + 6) % 7;
     ziel.append(el("p", {}, el("b", { text: "Öffnungszeiten" })),
