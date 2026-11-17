@@ -126,9 +126,12 @@ class App:
         name = str(payload.get("name") or "")
         out: dict = {"verfuegbar": True, "gefunden": False}
         quellen = []
-        if self.places is not None:
+        adresse = str(payload.get("adresse") or "").strip()
+        punkt = bool(payload.get("punkt"))
+        # Der Mittelpunkt eines Zuständigkeitsgebiets belegt keinen Behördenstandort.
+        if self.places is not None and (adresse or punkt):
             try:
-                g = self.places.details(name, str(payload.get("adresse") or ""), zentrum, punkt=bool(payload.get("punkt")))
+                g = self.places.details(name, adresse, zentrum, punkt=punkt)
                 if g.get("gefunden"):
                     out.update(g)
                     if g.get("oeffnungszeiten"):
@@ -143,6 +146,7 @@ class App:
                 pv = {}
             if pv.get("online_dienste"):
                 out["online_dienste"] = pv["online_dienste"]
+                out["gefunden"] = True
             stelle = pv.get("stelle") or {}
             gleich = True
             if stelle and name:
