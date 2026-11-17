@@ -138,11 +138,15 @@ async function suche(kategorie) {
 function zeige(d) {
   const teile = [];
   const kat = d.kategorie || {};
+  let zeigeOnline;
   if (d.leistung && d.leistung.titel) {
     const det = d.leistung.details || {};
     const zeile = el("p", { class: "meta" }, el("b", { text: "Leistung: " }), d.leistung.titel);
-    if (det.gefunden && det.online) zeile.append(el("span", { class: "badge" + (det.online.moeglich ? " amtlich" : ""),
-      text: det.online.moeglich ? "auch online möglich" : "kein Online-Dienst genannt" }));
+    const onlineMarke = el("span", { class: "badge amtlich", text: "auch online möglich" });
+    zeigeOnline = () => {
+      if (!onlineMarke.parentNode) zeile.append(onlineMarke);
+    };
+    if (det.gefunden && det.online?.moeglich) zeigeOnline();
     teile.push(zeile);
     if (det.gefunden) teile.push(leistungsDetails(det));
   }
@@ -193,7 +197,7 @@ function zeige(d) {
                            text: "Route in Google Maps" });
     karteEintrag.append(extra, navi);
     if (teile.filter((t) => t.classList && t.classList.contains("behoerde")).length < 3)
-      zusatzinfos(m, extra, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel);
+      zusatzinfos(m, extra, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline);
     teile.push(karteEintrag);
   }
   if (treffer.length > 5) teile.push(el("p", { class: "meta", text: `… und ${treffer.length - 5} weitere` }));
@@ -252,7 +256,7 @@ function zeigeStatus(marke, intervalle) {
   if (aktualisieren()) { const t = setInterval(() => { if (!aktualisieren()) clearInterval(t); }, 60000); }
 }
 
-async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika) {
+async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika, zeigeOnline) {
   const z = m.zentrum || (standort ? { lat: standort.lat, lon: standort.lon } : null);
   ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten werden geladen …" }));
   let g;
@@ -290,9 +294,14 @@ async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika) {
   }
   if (g.telefon && !k.telefon) ziel.append(el("p", {}, "Tel. ", el("a", { href: "tel:" + g.telefon.replace(/[^\d+]/g, ""), text: g.telefon })));
   if (g.web && !k.web) ziel.append(el("p", {}, link(g.web, "Webseite")));
-  if (g.online_dienste && g.online_dienste.length)
-    ziel.append(el("p", {}, el("b", { text: "Online erledigen: " }),
-      ...g.online_dienste.flatMap((o, i) => [i ? " · " : null, link(o.uri, o.titel)]).filter(Boolean)));
+  if (g.online_dienste && g.online_dienste.length) {
+    const links = g.online_dienste.map(o => link(o.uri, o.titel)).filter(Boolean);
+    if (links.length) {
+      zeigeOnline?.();
+      ziel.append(el("p", {}, el("b", { text: "Online erledigen: " }),
+        ...links.flatMap((element, i) => i ? [" · ", element] : [element])));
+    }
+  }
   if (g.email && !k.email) ziel.append(el("p", {}, el("a", { href: "mailto:" + g.email, text: g.email })));
   const osm = g.quelle === "osm";
   if (g.quelle) ziel.append(el("p", { class: "quelle" }, "Zusatzinfos: ",
