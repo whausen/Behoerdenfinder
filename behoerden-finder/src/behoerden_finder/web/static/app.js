@@ -179,8 +179,15 @@ function zeige(d) {
     if (k.web) karteEintrag.append(el("p", {}, link(k.web, "Webseite")));
     const dist = entfernung(m.distance_m);
     if (dist) karteEintrag.append(el("p", { class: "quelle", text: dist }));
-    if (m.source_id) karteEintrag.append(el("p", { class: "quelle" }, "Quelle: " + m.source_id,
-                                            m.evidence_url ? " · " : null, m.evidence_url ? link(m.evidence_url, "Beleg") : null));
+    const leistungsportal = d.leistung?.details?.portal?.[0];
+    if (leistungsportal?.uri) {
+      karteEintrag.append(el("p", { class: "quelle" },
+        link(leistungsportal.uri, "Leistungsbeschreibung im Serviceportal")));
+    }
+    if (m.source_id) {
+      karteEintrag.append(el("p", { class: "quelle" }, "Datenquelle der Behördenzuordnung: " + m.source_id,
+        m.evidence_url ? " · " : null, m.evidence_url ? link(m.evidence_url, "Datenquelle öffnen") : null));
+    }
     const extra = el("div", { class: "extra" });
     const navi = el("a", { class: "navi", target: "_blank", rel: "noopener", href: navigationsLink(m, null, d.standort),
                            text: "Route in Google Maps" });
