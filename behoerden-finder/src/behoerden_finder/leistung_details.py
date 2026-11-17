@@ -131,32 +131,43 @@ def auswerten(raw: dict) -> dict:
 
 
 def lookup(leistungsschluessel: str, land: str | None = None, db_path: str | Path | None = None) -> dict:
-    """Beste gespeicherte Beschreibung zum Leistungsschlüssel; bevorzugt das Land ``land`` (Name)."""
+    """Liefert die ausführlichste Beschreibung für das ermittelte Bundesland."""
     key = re.sub(r"\D", "", leistungsschluessel or "")
-    if len(key) != 14:
+    if len(key) != 14 or not land:
         return {"gefunden": False}
+
     path = Path(db_path) if db_path else faelle.default_db()
     if not path.exists():
         return {"gefunden": False}
+
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=15)
     try:
-        rows = con.execute("SELECT raw_json FROM jzufi_services WHERE keys_json LIKE ?", (f'%"{key}"%',)).fetchall()
+        rows = con.execute(
+            "SELECT raw_json FROM jzufi_services WHERE keys_json LIKE ?",
+            (f'%"{key}"%',),
+        ).fetchall()
     except sqlite3.Error:
         rows = []
     finally:
         con.close()
+
     kandidaten = []
     for (raw,) in rows:
         try:
-            d = auswerten(json.loads(raw))
+            details = auswerten(json.loads(raw))
         except (ValueError, TypeError):
             continue
-        umfang = sum(len(v) for k, v in d.items() if isinstance(v, list))
-        kandidaten.append((d.get("land") == land if land else False, umfang, d))
+        if details.get("land") == land:
+            kandidaten.append(details)
+
     if not kandidaten:
         return {"gefunden": False}
-    best = max(kandidaten, key=lambda x: (x[0], x[1]))[2]
-    return {"gefunden": True, **best}
+
+    beste_beschreibung = max(
+        kandidaten,
+        key=lambda details: sum(len(wert) for wert in details.values() if isinstance(wert, list)),
+    )
+    return {"gefunden": True, **beste_beschreibung}
 
 
 def land_aus_text(text: str | None) -> str | None:
