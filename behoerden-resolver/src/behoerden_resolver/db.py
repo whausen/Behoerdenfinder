@@ -3,6 +3,7 @@ import json
 import math
 import os
 from collections import Counter
+from datetime import date
 from pathlib import Path
 import psycopg
 from psycopg import sql
@@ -10,6 +11,16 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from .catalog import categories, category, plan, resource, source, sources
 from .etl import read_manifest
+
+def _aktualisiere_datenbezugsjahr(rows):
+    """Ersetzt den Platzhalter im Quellenvermerk durch das aktuelle Bezugsjahr."""
+    jahr = str(date.today().year)
+    for row in rows:
+        attribution = row.get("attribution")
+        if attribution:
+            row["attribution"] = attribution.replace("(Jahr des Datenbezugs)", jahr)
+    return rows
+
 
 DEFAULT_DSN = "postgresql://resolver:resolver-local@127.0.0.1:55432/authorities"
 
@@ -119,7 +130,8 @@ def resolve(value, lon, lat, dsn=None, include_geometry=True, exclude_sources=No
           WHERE a.category=%s AND NOT (a.source_id=ANY(%s::text[]))
             AND a.geom && p.geom AND ST_Covers(a.geom,p.geom)
           ORDER BY a.authority_name,a.source_id,a.source_key""").format(geometry), (lon,lat,c["id"],exclude_sources or [])).fetchall()
-        boundary = conn.execute("""WITH p AS (SELECT ST_SetSRID(ST_Point(%s,%s),4326) AS geom)
+        matches = _aktualisiere_datenbezugsjahr(matches)
+         boundary = conn.execute("""WITH p AS (SELECT ST_SetSRID(ST_Point(%s,%s),4326) AS geom)
           SELECT b.area_name,b.source_id,b.properties FROM behoerden.boundaries b CROSS JOIN p
           WHERE b.category=%s AND b.geom && p.geom AND ST_Covers(b.geom,p.geom)
           ORDER BY b.area_name,b.source_key""", (lon,lat,c["id"])).fetchall()
@@ -166,4 +178,4 @@ def nearby(value,lon,lat,radius_km=30,limit=3,dsn=None):
           WHERE l.category=%s AND ST_DWithin(l.geom::geography,p.geog,%s)
           ORDER BY distance_m,l.authority_name,l.source_id,l.source_key LIMIT %s""",
           (float(lon),float(lat),code,float(radius_km)*1000,limit)).fetchall()
-    return rows
+    return _aktualisiere_datenbezugsjahr(rows)
