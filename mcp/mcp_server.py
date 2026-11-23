@@ -193,15 +193,44 @@ def behoerde_finden(
         raise ToolError(f"Datendienst gerade nicht verfügbar: {e}") from e
     ort = a["ort"] and {"gefunden_als": a["ort"]["anzeige"], "gemeinde": a["ort"].get("gemeinde"),
                         "hinweise": a["ort"]["hinweise"]}
+
+    # Quellen auf die tatsächlich für diese Kategorie konfigurierten Layer beziehen.
+    layer_nach_quelle: dict[str, list[dict]] = {}
+    for typ_key in kat.flaechen:
+        typ = zf.BEHOERDENTYPEN.get(typ_key)
+        if typ is None:
+            continue
+        layer_nach_quelle.setdefault(typ.quelle, []).append({
+            "behoerdentyp": typ.key,
+            "behoerde": typ.label,
+            "layer": zf.layer_fuer(typ_key),
+        })
+    datenquellen = []
+    for q in a["quellen"]:
+        info = {**q, "layer": layer_nach_quelle.get(q["id"], [])}
+        datenquellen.append(info)
+
+    stellen = []
+    for stelle in a["stellen"]:
+        item = {k: v for k, v in stelle.items() if k not in _OHNE}
+        ids = stelle.get("quellen", [])
+        item["datenquellen"] = [
+            {**q, "layer": layer_nach_quelle.get(q["id"], [])}
+            for q in a["quellen"] if q["id"] in ids
+        ]
+        stellen.append(item)
+
     return {
         "kategorie": a["kategorie"]["label"],
         "ort": ort,
-        "stellen": [{k: v for k, v in s.items() if k not in _OHNE} for s in a["stellen"]],
+        "stellen": stellen,
         "eindeutig": a["eindeutig"],
         "leistung": a["leistung"] and a["leistung"]["name"],
         "onlinedienste": a["onlinedienste"],
         "hinweise": a["hinweise"],
+        "datenquellen": datenquellen,
         "quelle": "; ".join(q["quellenvermerk"] for q in a["quellen"]),
+        "zuständigkeitsart": "Räumliche Gebietszuordnung; keine Prüfung der persönlichen oder einzelfallbezogenen Zuständigkeit.",
     }
 
 
