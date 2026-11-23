@@ -288,7 +288,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
                                intervalle: a.intervalle, zeiten_quelle: a.zeiten_quelle, zeiten_text: a.zeiten_text };
   if (!g || !g.verfuegbar || (!g.gefunden && !g.hessen_leistung)) {
     hinweise.append(el("li", { text: "Fachliche Zuständigkeit nicht durch PVOG bestätigt; angezeigt wird eine räumlich zugeordnete Verwaltungsstelle." }));
-    hinweise.append(el("li", { text: "Öffnungszeiten: in den offenen Daten nicht gefunden – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.append(el("li", { text: "Öffnungszeiten: bitte bei der jeweiligen Dienststelle prüfen." }));
     hinweise.hidden = false;
     return;
   }
@@ -298,7 +298,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     const stellen = (g.fachstellen || []).length ? g.fachstellen : [g.fachstelle];
     // Gleiche Dienststellen aus PVOG und Hessen zusammenführen; PVOG-Kontaktdaten behalten.
     const normal = (name) => (name || "").toLocaleLowerCase("de-DE")
-      .replace(/[\\s/]+/g, " ").replace(/[^a-z0-9äöüß]+/g, " ").trim();
+      .replace(/[^a-z0-9äöüß]+/g, " ").trim();
     const einzigartig = new Map();
     for (const stelle of stellen) {
       const key = normal(stelle.name);
@@ -331,7 +331,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
           fach.append(el("p", {}, link("https://www.google.com/maps/dir/?" + params, "Route zu dieser Dienststelle")));
         }
         if (stelle.telefon) fach.append(el("p", {}, "Tel. ",
-          el("a", { href: "tel:" + stelle.telefon.replace(/[^\\d+]/g, ""), text: stelle.telefon })));
+          el("a", { href: "tel:" + stelle.telefon.replace(/[^0-9+]/g, ""), text: stelle.telefon })));
         if (stelle.email) fach.append(el("p", {}, el("a", { href: "mailto:" + stelle.email, text: stelle.email })));
         if (stelle.web) fach.append(el("p", {}, link(stelle.web, "Webseite der Dienststelle")));
         fach.append(el("p", { class: "quelle", text: "Quelle: " + (stelle.quelle || "Portalverbund (PVOG)") }));
