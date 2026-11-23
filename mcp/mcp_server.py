@@ -74,19 +74,45 @@ server = MCPServer(
 )
 
 
+def _datenquelle(quelle_id: str, layer: str | None = None) -> dict:
+    """Liefert Quellenmetadaten und – sofern bekannt – den tatsächlich abgefragten WFS-Layer."""
+    quelle = zf.QUELLEN.get(quelle_id)
+    if quelle is None:
+        return {"id": quelle_id, "layer": layer} if layer else {"id": quelle_id}
+    return {**quelle.info(), **({"layer": layer} if layer else {})}
+
+
 def _kompakt(erg: dict) -> dict:
-    """Ergebnis fürs LLM: Name zuerst, Rohattribute behalten, Geometrie weglassen."""
+    """Ergebnis fürs LLM: Treffer plus nachvollziehbare Datenherkunft, ohne Geometrien."""
     def eintrag(e: dict) -> dict:
         treffer = e.get("treffer", [])
-        out = {"behoerde": e["label"], "zustaendig": [t["name"] for t in treffer]}
+        quelle = _datenquelle(e["quelle"], e.get("layer"))
+        details = []
+        for t in treffer:
+            attribute = t.get("attribute", {})
+            details.append({
+                "name": t["name"],
+                "feature_id": attribute.get("id"),
+                "fachliche_kennung": attribute.get("dst_id"),
+                "attribute": attribute,
+            })
+        out = {
+            "behoerde": e["label"],
+            "zustaendig": [t["name"] for t in treffer],
+            "datenquelle": quelle,
+            "treffer_details": details,
+            "zuständigkeitsart": "räumliche Gebietszuordnung; keine Prüfung der persönlichen oder einzelfallbezogenen Zuständigkeit",
+        }
         if any("uebergeordnet" in t for t in treffer):
             out["uebergeordnet"] = [t.get("uebergeordnet") for t in treffer]
+        # Rückwärtskompatibel: bisherige Rohattribute bleiben unter "details" verfügbar.
         out["details"] = [t["attribute"] for t in treffer]
         for k in ("hinweis", "fehler"):
             if e.get(k):
                 out[k] = e[k]
         return out
 
+    quellen = [_datenquelle(e["quelle"], e.get("layer")) for e in erg["ergebnisse"]]
     vermerke = [q["quellenvermerk"] for q in erg["quellen"]]
     if erg.get("geocoding"):
         vermerke.append("Geocoding " + erg["geocoding"])
@@ -94,6 +120,7 @@ def _kompakt(erg: dict) -> dict:
         "ort": {"gefunden_als": erg["ort"]["anzeige"], "lat": erg["ort"]["lat"],
                 "lon": erg["ort"]["lon"], "hinweise": erg["ort"]["hinweise"]},
         "ergebnisse": [eintrag(e) for e in erg["ergebnisse"]],
+        "datenquellen": quellen,
         "quelle": "; ".join(vermerke),
     }
 
