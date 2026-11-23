@@ -211,6 +211,103 @@ def _html_text(html: str) -> str:
     return re.sub(r"[ \t]+", " ", text)
 
 
+
+# --- Hessen: ortsbezogene Leistungs- und Organisationszuordnung -------------------------------------
+class HessenClient:
+    """Öffentlich erreichbare Portal-JSON-Endpunkte; nicht als stabile API dokumentiert."""
+    BASIS = "https://verwaltungsportal.hessen.de"
+
+    def __init__(self, *, http_post=None, timeout=9.0, clock=time.monotonic):
+        self._post = http_post or requests.post
+        self.timeout, self._clock = timeout, clock
+        self._cache = {}
+        self._lock = threading.Lock()
+
+    def _request(self, path, params):
+        response = self._post(self.BASIS + path, params=params, timeout=self.timeout,
+                              headers={"Accept": "application/json", "User-Agent": UA})
+        response.raise_for_status()
+        return response.json()
+
+    @staticmethod
+    def _org_links(html):
+        from html.parser import HTMLParser
+        from urllib.parse import parse_qs
+        class Links(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.href = None
+                self.label = ""
+                self.items = []
+            def handle_starttag(self, tag, attrs):
+                if tag == "a":
+                    self.href = dict(attrs).get("href", "")
+                    self.label = ""
+            def handle_data(self, data):
+                if self.href is not None:
+                    self.label += data
+            def handle_endtag(self, tag):
+                if tag == "a" and self.href is not None:
+                    if urlparse(self.href).path == "/behoerde":
+                        oid = parse_qs(urlparse(self.href).query).get("org_id", [""])[0]
+                        if re.fullmatch(r"L\\d+_\\d+", oid):
+                            self.items.append((oid, self.label.strip()))
+                    self.href = None
+        parser = Links()
+        parser.feed(html)
+        return list(dict.fromkeys(parser.items))
+
+    def zustaendig(self, leika, ars, suchbegriff=None):
+        if not re.fullmatch(r"\\d{14}", str(leika or "")) or not re.fullmatch(r"\\d{12}", str(ars or "")):
+            return {}
+        if not str(ars).startswith("06"):
+            return {}
+        key = (str(leika), str(ars))
+        with self._lock:
+            cached = self._cache.get(key)
+            if cached and self._clock() - cached[0] < CACHE_SEKUNDEN:
+                return cached[1]
+        query = (suchbegriff or "Hund anmelden")[:100] if leika == "99102013104000" else str(leika)
+        search = self._request("/suche", {"lang": "de_DE", "suche": query, "regschl": ars})
+        rows = ((search.get("result") or {}).get("leistungenRows") or [])
+        exact = next((row for row in rows if str(row.get("leikaSchluessel")) == str(leika)), None)
+        if exact is None and query != str(leika):
+            search = self._request("/suche", {"lang": "de_DE", "suche": str(leika), "regschl": ars})
+            exact = next((row for row in ((search.get("result") or {}).get("leistungenRows") or [])
+                          if str(row.get("leikaSchluessel")) == str(leika)), None)
+        if not exact or not re.fullmatch(r"L\\d+_\\d+", str(exact.get("id") or "")):
+            return {}
+        lid = exact["id"]
+        page = self._request("/leistung", {"leistung_id": lid, "regschl": ars, "lang": "de_DE"})
+        if str(((page.get("page") or {}).get("data") or {}).get("leistung", {}).get("firstLeika")) != str(leika):
+            return {}
+        html = (((page.get("page") or {}).get("pageElements") or {}).get("contentHtml") or {}).get("safeHtml") or ""
+        stellen = []
+        for oid, label in self._org_links(html)[:12]:
+            # Organisationsseite für zusätzliche Daten; der Link ist bereits amtlich
+            # mit dieser Leistung verknüpft. Keine Rollen aus der Reihenfolge ableiten.
+            stelle = {"name": label or "Ansprechpartner", "rolle": "Ansprechpartner zur Leistung",
+                      "quelle": "Verwaltungsportal Hessen", "organisation_id": oid,
+                      "web": self.BASIS + "/behoerde?org_id=" + oid}
+            try:
+                org = self._request("/behoerde", {"org_id": oid, "lang": "de_DE"})
+                orghtml = (((org.get("page") or {}).get("pageElements") or {}).get("contentHtml") or {}).get("safeHtml") or ""
+                title = re.search(r"<h1[^>]*>(.*?)</h1>", orghtml, re.I | re.S)
+                if title:
+                    stelle["name"] = re.sub(r"<[^>]*>", "", title.group(1)).strip() or stelle["name"]
+            except (requests.RequestException, ValueError, KeyError, TypeError):
+                pass
+            stellen.append(stelle)
+        result = {"ars": ars, "leistung_id": lid, "leika": leika,
+                  "leistung_url": self.BASIS + "/leistung?leistung_id=" + lid + "&regschl=" + ars,
+                  "stellen": stellen, "zuordnung_vorhanden": bool(stellen)}
+        with self._lock:
+            if len(self._cache) > 1000:
+                self._cache.pop(next(iter(self._cache)))
+            self._cache[key] = (self._clock(), result)
+        return result
+
+
 # --- 3. Webseite der Behörde -----------------------------------------------------------------------------------------
 
 _SCHLUESSEL = re.compile(r"öffnungszeit|oeffnungszeit|sprechzeit|servicezeit|besuchszeit|publikumsverkehr|opening", re.I)
