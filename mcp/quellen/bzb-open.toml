@@ -10,7 +10,7 @@ titel = "Behördenzuständigkeitsbereiche Open (BZB-Open)"
 herausgeber = "Bundesamt für Kartographie und Geodäsie (BKG)"
 wfs_url = "https://sgx.geodatenzentrum.de/wfs_bzb_open"
 lizenz = "dl-de/by-2-0"
-quellenvermerk = "© BKG (Datenbezug gemäß Abrufdatum), dl-de/by-2-0; Datenquellen: https://sgx.geodatenzentrum.de/web_public/gdz/datenquellen/datenquellen_bzb-open.pdf"
+quellenvermerk = "© BKG {jahr}, dl-de/by-2-0; Datenquellen: https://sgx.geodatenzentrum.de/web_public/gdz/datenquellen/datenquellen_bzb-open.pdf"
 info_url = "https://gdz.bkg.bund.de/index.php/default/behoerdenzustaendigkeitsbereiche-open-bzb-open.html"
 datenstand = "03/2026"
 
