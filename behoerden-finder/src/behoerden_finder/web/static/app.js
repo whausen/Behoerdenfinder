@@ -298,7 +298,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     const stellen = (g.fachstellen || []).length ? g.fachstellen : [g.fachstelle];
     // Gleiche Dienststellen aus PVOG und Hessen zusammenführen; PVOG-Kontaktdaten behalten.
     const normal = (name) => (name || "").toLocaleLowerCase("de-DE")
-      .replace(/\\s*\\/\\s*/g, " ").replace(/[^a-z0-9äöüß]+/g, " ").trim();
+      .replace(/[\\s/]+/g, " ").replace(/[^a-z0-9äöüß]+/g, " ").trim();
     const einzigartig = new Map();
     for (const stelle of stellen) {
       const key = normal(stelle.name);
