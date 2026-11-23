@@ -164,6 +164,13 @@ function zeige(d) {
     teile.push(el("p", { class: "meta" }, el("b", { text: "Standort: " }), s.anzeige_name || `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}`,
                   s.quelle ? el("span", { class: "badge", text: s.quelle }) : null));
   }
+  const technik = el("details", { class: "leistung" }, el("summary", { text: "Technische Informationen und Datenquellen" }));
+  const info = (label, value) => { if (value != null && value !== "") technik.append(el("p", { class: "quelle", text: label + ": " + value })); };
+  info("LeiKa-Schlüssel", d.leistung?.leistungsschluessel || "nicht ermittelt");
+  info("Erkannte Leistung", d.leistung?.titel);
+  info("Quelle der Behördenart", kat.quelle);
+  info("Geocoding", d.standort?.quelle);
+  teile.push(technik);
   teile.push(el("h2", { text: d.ueberschrift || "Kein Ergebnis" }));
 
   if (d.status === "kategorie_mehrdeutig" && (kat.kandidaten || []).length) {
@@ -283,6 +290,22 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     g = await r.json();
   } catch { g = null; }
   ziel.replaceChildren();
+  if (g) {
+    const tech = el("details", { class: "leistung" }, el("summary", { text: "Technische Informationen zur Zuständigkeitsabfrage" }));
+    const info = (label, value) => tech.append(el("p", { class: "quelle", text: label + ": " + (value || "nicht ermittelt") }));
+    info("LeiKa-Schlüssel der Anfrage", leika);
+    info("ARS", g.ars);
+    info("PVOG-Leistungs-ID", g.pvog_leistung_id);
+    if (g.hessen_leistung) {
+      info("Hessen-Leistungs-ID", g.hessen_leistung.id);
+      info("Hessen-Zuordnung", g.hessen_leistung.zuordnung_vorhanden ? "vorhanden" : "nicht vorhanden");
+    }
+    info("Räumliche Datenbasis", m.source_id);
+    for (const stelle of g.fachstellen || []) {
+      if (stelle.organisation_id) info(stelle.name + " (" + stelle.quelle + ")", stelle.organisation_id);
+    }
+    ziel.append(tech);
+  }
   const a = m.amtlich || {};
   if (a.oeffnungszeiten) g = { ...(g || {}), verfuegbar: true, gefunden: true, oeffnungszeiten: a.oeffnungszeiten,
                                intervalle: a.intervalle, zeiten_quelle: a.zeiten_quelle, zeiten_text: a.zeiten_text };
