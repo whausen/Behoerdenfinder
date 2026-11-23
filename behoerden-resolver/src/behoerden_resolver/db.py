@@ -131,7 +131,7 @@ def resolve(value, lon, lat, dsn=None, include_geometry=True, exclude_sources=No
             AND a.geom && p.geom AND ST_Covers(a.geom,p.geom)
           ORDER BY a.authority_name,a.source_id,a.source_key""").format(geometry), (lon,lat,c["id"],exclude_sources or [])).fetchall()
         matches = _aktualisiere_datenbezugsjahr(matches)
-         boundary = conn.execute("""WITH p AS (SELECT ST_SetSRID(ST_Point(%s,%s),4326) AS geom)
+        boundary = conn.execute("""WITH p AS (SELECT ST_SetSRID(ST_Point(%s,%s),4326) AS geom)
           SELECT b.area_name,b.source_id,b.properties FROM behoerden.boundaries b CROSS JOIN p
           WHERE b.category=%s AND b.geom && p.geom AND ST_Covers(b.geom,p.geom)
           ORDER BY b.area_name,b.source_key""", (lon,lat,c["id"])).fetchall()
