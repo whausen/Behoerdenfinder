@@ -150,8 +150,8 @@ class PvogClient:
             stellen = []
             for oe in (lb.get("organisationIds") or [])[:4]:
                 try:
-                    stellen.append(self._json(PVOG + "/v5/organisationunits/detail",
-                                              {"q": oe, "ars": ars, "lbId": lb.get("id"), "validDate": heute}))
+                    stellen.append({**self._json(PVOG + "/v5/organisationunits/detail",
+                                              {"q": oe, "ars": ars, "lbId": lb.get("id"), "validDate": heute}), "organisation_id": oe})
                 except Exception:
                     continue
             out["stellen"] = [self._stelle(s) for s in stellen]
@@ -172,7 +172,7 @@ class PvogClient:
     @staticmethod
     def _stelle(s: dict) -> dict:
         loc = s.get("location") or {}
-        out = {"name": s.get("title"), "rolle": (s.get("role") or {}).get("name")}
+        out = {"name": s.get("title"), "rolle": (s.get("role") or {}).get("name"), "organisation_id": s.get("organisation_id")}
         for a in loc.get("addresses") or []:
             if a.get("street"):
                 out["adresse"] = f"{a.get('street')} {a.get('houseNumber') or ''}".strip() + f", {a.get('zip') or ''} {a.get('city') or ''}".rstrip()
