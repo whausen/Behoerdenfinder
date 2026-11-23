@@ -216,6 +216,9 @@ def finde_behoerde(
             flaechen_stellen.append({k: v for k, v in {
                 "name": name, "art": e["label"], "gebiet": t["name"] if name != t["name"] else None,
                 "uebergeordnet": t.get("uebergeordnet"),
+                "feature_kennung": t["attribute"].get("id"),
+                "fachliche_kennung": t["attribute"].get("dst_id"),
+                "feature_attribute": t["attribute"],
                 "quellen": [e["quelle"]], "methode": "flaeche"}.items() if v is not None})
         if len(e.get("treffer", [])) > 1:
             antwort["hinweise"].append(f"{e['label']}: mehrere Flächen treffen zu (Grenzlage oder Überlappung).")
