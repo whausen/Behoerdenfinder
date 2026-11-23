@@ -74,8 +74,10 @@ server = MCPServer(
 )
 
 
-def _datenquelle(quelle_id: str, layer: str | None = None) -> dict:
-    """Liefert Quellenmetadaten und – sofern bekannt – den tatsächlich abgefragten WFS-Layer."""
+def _datenquelle(quelle_id: str, layer: str | None = None, typ: str | None = None) -> dict:
+    """Liefert Anbieter-, Produkt-, Layer-, Datenstands- und Snapshot-Metadaten."""
+    if typ:
+        return zf.layer_metadaten(typ)
     quelle = zf.QUELLEN.get(quelle_id)
     if quelle is None:
         return {"id": quelle_id, "layer": layer} if layer else {"id": quelle_id}
@@ -86,7 +88,7 @@ def _kompakt(erg: dict) -> dict:
     """Ergebnis fürs LLM: Treffer plus nachvollziehbare Datenherkunft, ohne Geometrien."""
     def eintrag(e: dict) -> dict:
         treffer = e.get("treffer", [])
-        quelle = _datenquelle(e["quelle"], e.get("layer"))
+        quelle = _datenquelle(e["quelle"], e.get("layer"), e.get("typ"))
         details = []
         for t in treffer:
             attribute = t.get("attribute", {})
@@ -112,7 +114,7 @@ def _kompakt(erg: dict) -> dict:
                 out[k] = e[k]
         return out
 
-    quellen = [_datenquelle(e["quelle"], e.get("layer")) for e in erg["ergebnisse"]]
+    quellen = [_datenquelle(e["quelle"], e.get("layer"), e.get("typ")) for e in erg["ergebnisse"]]
     vermerke = [q["quellenvermerk"] for q in erg["quellen"]]
     if erg.get("geocoding"):
         vermerke.append("Geocoding " + erg["geocoding"])
@@ -194,21 +196,26 @@ def behoerde_finden(
     ort = a["ort"] and {"gefunden_als": a["ort"]["anzeige"], "gemeinde": a["ort"].get("gemeinde"),
                         "hinweise": a["ort"]["hinweise"]}
 
-    # Quellen auf die tatsächlich für diese Kategorie konfigurierten Layer beziehen.
+    # Exakte Layer-Metadaten je tatsächlich abgefragtem BZB-/VG250-Behördentyp.
     kat = bf.KATEGORIEN[a["kategorie"]["key"]]
     layer_nach_quelle: dict[str, list[dict]] = {}
     for typ_key in kat.flaechen:
         typ = zf.BEHOERDENTYPEN.get(typ_key)
         if typ is None:
             continue
-        layer_nach_quelle.setdefault(typ.quelle, []).append({
-            "behoerdentyp": typ.key,
-            "behoerde": typ.label,
-            "layer": zf.layer_fuer(typ_key),
-        })
+        layer_nach_quelle.setdefault(typ.quelle, []).append(zf.layer_metadaten(typ_key))
+
     datenquellen = []
     for q in a["quellen"]:
-        info = {**q, "layer": layer_nach_quelle.get(q["id"], [])}
+        layer_infos = layer_nach_quelle.get(q["id"], [])
+        info = {**q, "layer": layer_infos}
+        if len(layer_infos) == 1:
+            info.update({
+                "wfs_layer": layer_infos[0]["layer"],
+                "datenstand": layer_infos[0].get("datenstand"),
+                "datenabruf": layer_infos[0].get("datenabruf"),
+                "cache_status": layer_infos[0].get("cache_status"),
+            })
         datenquellen.append(info)
 
     stellen = []
