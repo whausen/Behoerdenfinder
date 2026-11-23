@@ -62,7 +62,7 @@ Vorgehen:
 3. Gib Name und Kontaktdaten genau so wieder, wie sie geliefert werden; erfinde keine Anschriften,
    Telefonnummern oder Öffnungszeiten. Ist "eindeutig" false, nenne die in Frage kommenden Stellen
    und dass die Zuständigkeit z. B. vom Stadtteil abhängen kann. Weise auf "hinweise" hin.
-4. Nenne als Quelle die Angabe im Feld "quelle" des Ergebnisses (z. B. {_vermerke}; PVOG).
+4. Nenne die konkrete Datenquelle aus "datenquelle"/"datenquellen": Herausgeber, Produkt, WFS und exakten Layer. Bei BZB-Open ausdrücklich "Bundesamt für Kartographie und Geodäsie (BKG), Behördenzuständigkeitsbereiche Open (BZB-Open)" nennen. Die BKG-Zuständigkeitsdaten sind von der Hintergrundkarte zu unterscheiden. Nenne außerdem die Lizenz und den Quellenvermerk. Geocoding (Nominatim) separat ausweisen. Räumliche Gebietszuordnung nicht als Nachweis einer persönlichen oder einzelfallbezogenen Zuständigkeit darstellen.
 """
 
 server = MCPServer(
@@ -92,7 +92,7 @@ def _kompakt(erg: dict) -> dict:
             attribute = t.get("attribute", {})
             details.append({
                 "name": t["name"],
-                "feature_id": attribute.get("id"),
+                "feature_kennung": attribute.get("id"),
                 "fachliche_kennung": attribute.get("dst_id"),
                 "attribute": attribute,
             })
