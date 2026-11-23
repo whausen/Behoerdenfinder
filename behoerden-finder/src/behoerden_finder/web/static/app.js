@@ -164,9 +164,16 @@ function zeige(d) {
     teile.push(el("p", { class: "meta" }, el("b", { text: "Standort: " }), s.anzeige_name || `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}`,
                   s.quelle ? el("span", { class: "badge", text: s.quelle }) : null));
   }
-  const technik = el("details", { class: "leistung" }, el("summary", { text: "Technische Informationen und Datenquellen" }));
-  const info = (label, value) => { if (value != null && value !== "") technik.append(el("p", { class: "quelle", text: label + ": " + value })); };
-  info("LeiKa-Schlüssel", d.leistung?.leistungsschluessel || "nicht ermittelt");
+  const technik = el("details", { class: "leistung" }, el("summary", { text: "Verwendete Leistungskennungen und Datenquellen" }));
+  const technischeEintraege = new Set();
+  const info = (label, value) => {
+    if (value == null || value === "") return;
+    const key = label + ": " + value;
+    if (technischeEintraege.has(key)) return;
+    technischeEintraege.add(key);
+    technik.append(el("p", { class: "quelle", text: key }));
+  };
+  info("LeiKa-Schlüssel", d.leistung?.leistungsschluessel);
   info("Erkannte Leistung", d.leistung?.titel);
   info("Quelle der Behördenart", kat.quelle);
   info("Geocoding", d.standort?.quelle);
@@ -215,7 +222,7 @@ function zeige(d) {
                            text: "Route in Google Maps" });
     karteEintrag.append(extra, navi);
     if (teile.filter((t) => t.classList && t.classList.contains("behoerde")).length < 3)
-      zusatzinfos(m, extra, hinweise, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline, (d.leistung || {}).titel);
+      zusatzinfos(m, extra, hinweise, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline, (d.leistung || {}).titel, info);
     hinweise.hidden = !hinweise.childElementCount;
     teile.push(karteEintrag, hinweise);
   }
@@ -275,7 +282,7 @@ function zeigeStatus(marke, intervalle) {
   if (aktualisieren()) { const t = setInterval(() => { if (!aktualisieren()) clearInterval(t); }, 60000); }
 }
 
-async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika, zeigeOnline, leistungName) {
+async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika, zeigeOnline, leistungName, technischeInfo) {
   const z = m.zentrum || (standort ? { lat: standort.lat, lon: standort.lon } : null);
   ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten werden geladen …" }));
   let g;
@@ -291,20 +298,14 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
   } catch { g = null; }
   ziel.replaceChildren();
   if (g) {
-    const tech = el("details", { class: "leistung" }, el("summary", { text: "Technische Informationen zur Zuständigkeitsabfrage" }));
-    const info = (label, value) => tech.append(el("p", { class: "quelle", text: label + ": " + (value || "nicht ermittelt") }));
-    info("LeiKa-Schlüssel der Anfrage", leika);
-    info("ARS", g.ars);
-    info("PVOG-Leistungs-ID", g.pvog_leistung_id);
+    technischeInfo("LeiKa-Schlüssel der Zuständigkeitsabfrage", leika);
+    technischeInfo("ARS", g.ars);
+    technischeInfo("PVOG-Leistungs-ID", g.pvog_leistung_id);
     if (g.hessen_leistung) {
-      info("Hessen-Leistungs-ID", g.hessen_leistung.id);
-      info("Hessen-Zuordnung", g.hessen_leistung.zuordnung_vorhanden ? "vorhanden" : "nicht vorhanden");
+      technischeInfo("Hessen-Leistungs-ID", g.hessen_leistung.id);
+      technischeInfo("Hessen-Zuordnung", g.hessen_leistung.zuordnung_vorhanden ? "vorhanden" : "nicht vorhanden");
     }
-    info("Räumliche Datenbasis", m.source_id);
-    for (const stelle of g.fachstellen || []) {
-      if (stelle.organisation_id) info(stelle.name + " (" + stelle.quelle + ")", stelle.organisation_id);
-    }
-    ziel.append(tech);
+    technischeInfo("Räumliche Datenbasis", m.source_id);
   }
   const a = m.amtlich || {};
   if (a.oeffnungszeiten) g = { ...(g || {}), verfuegbar: true, gefunden: true, oeffnungszeiten: a.oeffnungszeiten,
