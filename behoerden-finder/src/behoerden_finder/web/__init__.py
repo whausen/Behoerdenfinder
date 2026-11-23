@@ -156,6 +156,11 @@ class App:
                 from ..osm_details import aehnlichkeit
                 gleich = aehnlichkeit(name, stelle.get("name") or "") >= 0.5
             if stelle:
+                # Fachlich zugeordnete Stelle separat ausweisen; nicht mit der allgemeinen
+                # Verwaltungsstelle vermischen (insbesondere bei abweichendem Namen).
+                out["fachstelle"] = {k: stelle[k] for k in ("name", "rolle", "adresse", "telefon", "email", "web", "lat", "lon") if stelle.get(k)}
+                out["fachstelle"]["quelle"] = "Portalverbund (PVOG)"
+                out["fachstelle"]["leistung_id"] = pv.get("leistung_id")
                 quellen.append("pvog")
                 out["gefunden"] = True
                 if gleich:                    # nur bei derselben Behörde Kontaktdaten ergänzen
