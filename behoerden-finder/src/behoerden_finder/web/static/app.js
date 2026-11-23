@@ -276,12 +276,27 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
   if (a.oeffnungszeiten) g = { ...(g || {}), verfuegbar: true, gefunden: true, oeffnungszeiten: a.oeffnungszeiten,
                                intervalle: a.intervalle, zeiten_quelle: a.zeiten_quelle, zeiten_text: a.zeiten_text };
   if (!g || !g.verfuegbar || !g.gefunden) {
+    hinweise.append(el("li", { text: "Fachliche Zuständigkeit nicht durch PVOG bestätigt; angezeigt wird eine räumlich zugeordnete Verwaltungsstelle." }));
     hinweise.append(el("li", { text: "Öffnungszeiten: in den offenen Daten nicht gefunden – bitte auf der Webseite der Behörde prüfen." }));
     hinweise.hidden = false;
     return;
   }
   navi.href = navigationsLink(m, g, standort);
   const k = m.kontakt || {};
+  if (g.fachstelle && g.fachstelle.name) {
+    const s = g.fachstelle;
+    const fach = el("section", { class: "fachstelle" },
+      el("h4", { text: "Fachlich zuständige Stelle (PVOG)" }),
+      el("p", { text: s.name }));
+    if (s.adresse) fach.append(el("p", { text: s.adresse }));
+    if (s.telefon) fach.append(el("p", {}, "Tel. ", el("a", { href: "tel:" + s.telefon.replace(/[^\\d+]/g, ""), text: s.telefon })));
+    if (s.email) fach.append(el("p", {}, el("a", { href: "mailto:" + s.email, text: s.email })));
+    if (s.web) fach.append(el("p", {}, link(s.web, "Webseite der Dienststelle")));
+    fach.append(el("p", { class: "quelle", text: "Quelle: " + (s.quelle || "Portalverbund (PVOG)") }));
+    ziel.append(fach);
+  } else if (leika) {
+    ziel.append(el("p", { class: "quelle", text: "Fachliche Zuständigkeit durch PVOG nicht bestätigt; allgemeine Verwaltungsstelle." }));
+  }
   if (g.adresse && !k.adresse) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
   if (g.oeffnungszeiten && g.oeffnungszeiten.length) {
     const heute = (new Date().getDay() + 6) % 7;
