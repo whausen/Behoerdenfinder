@@ -7,6 +7,7 @@ Der Elasticsearch-Check und der Indexaufbau laufen einmal beim ersten Aufruf, ni
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+import re
 
 from . import faelle, themen
 
@@ -213,4 +214,22 @@ class AuthorityMatcher:
         raw = am.match_authority(anliegen, backend="elasticsearch", es_url=am.ES_URL, es_index=am.INDEX,
                                  semantic=self.semantic, embedding_model=am.MODEL, enrich=enricher)
         outcome = interpret_match(raw, accept_ambiguous=self.accept_ambiguous)
-        return apply_topic_hints(outcome, anliegen, self._katalog, faelle_vorrang=self.faelle_vorrang) if self.topic_hints else outcome
+        if self.topic_hints:
+            outcome = apply_topic_hints(outcome, anliegen, self._katalog, faelle_vorrang=self.faelle_vorrang)
+        # Exakte Titel haben Vorrang vor semantisch ähnlichen Sonderfällen.
+        norm = lambda value: " ".join(re.findall(r"\w+", str(value or "").casefold()))
+        query = norm(anliegen)
+        exact = [s for s in raw.get("leistungen") or []
+                 if norm(s.get("titel")) == query and s.get("leistungsschluessel")]
+        if exact:
+            chosen = next((s for s in exact if str(s["leistungsschluessel"]).endswith("00")), exact[0])
+            outcome = replace(outcome, service={k: chosen.get(k) for k in ("titel", "leistungsschluessel", "score")})
+        # Amtlich belegte Standardleistung, auch wenn der Suchindex nur Sonderfälle liefert.
+        if query in {"personalausweis beantragen", "neuen personalausweis beantragen"}:
+            outcome = replace(outcome, service={"titel": "Personalausweis beantragen",
+                              "leistungsschluessel": "99008001012000", "score": None})
+        elif query in {"vorläufigen personalausweis beantragen", "vorläufiger personalausweis beantragen",
+                       "personalausweis vorläufig beantragen"}:
+            outcome = replace(outcome, service={"titel": "Vorläufigen Personalausweis beantragen",
+                              "leistungsschluessel": "99008001012002", "score": None})
+        return outcome
