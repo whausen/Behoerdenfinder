@@ -195,6 +195,7 @@ def behoerde_finden(
                         "hinweise": a["ort"]["hinweise"]}
 
     # Quellen auf die tatsächlich für diese Kategorie konfigurierten Layer beziehen.
+    kat = bf.KATEGORIEN[a["kategorie"]["key"]]
     layer_nach_quelle: dict[str, list[dict]] = {}
     for typ_key in kat.flaechen:
         typ = zf.BEHOERDENTYPEN.get(typ_key)
