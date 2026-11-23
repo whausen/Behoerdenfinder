@@ -283,8 +283,9 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
   }
   navi.href = navigationsLink(m, g, standort);
   const k = m.kontakt || {};
-  if (g.fachstelle && g.fachstelle.name) {
-    const s = g.fachstelle;
+  if ((g.fachstellen || []).length || (g.fachstelle && g.fachstelle.name)) {
+    const stellen = (g.fachstellen || []).length ? g.fachstellen : [g.fachstelle];
+    for (const s of stellen) {
     const fach = el("section", { class: "fachstelle" },
       el("h4", { text: "Fachlich zuständige Stelle (PVOG)" }),
       el("p", { text: s.name }));
@@ -294,6 +295,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     if (s.web) fach.append(el("p", {}, link(s.web, "Webseite der Dienststelle")));
     fach.append(el("p", { class: "quelle", text: "Quelle: " + (s.quelle || "Portalverbund (PVOG)") }));
     ziel.append(fach);
+    }
   } else if (leika) {
     ziel.append(el("p", { class: "quelle", text: "Fachliche Zuständigkeit durch PVOG nicht bestätigt; allgemeine Verwaltungsstelle." }));
   }
