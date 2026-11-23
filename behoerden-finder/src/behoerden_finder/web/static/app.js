@@ -198,7 +198,7 @@ function zeige(d) {
                            text: "Route in Google Maps" });
     karteEintrag.append(extra, navi);
     if (teile.filter((t) => t.classList && t.classList.contains("behoerde")).length < 3)
-      zusatzinfos(m, extra, hinweise, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline);
+      zusatzinfos(m, extra, hinweise, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline, (d.leistung || {}).titel);
     hinweise.hidden = !hinweise.childElementCount;
     teile.push(karteEintrag, hinweise);
   }
@@ -258,7 +258,7 @@ function zeigeStatus(marke, intervalle) {
   if (aktualisieren()) { const t = setInterval(() => { if (!aktualisieren()) clearInterval(t); }, 60000); }
 }
 
-async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika, zeigeOnline) {
+async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika, zeigeOnline, leistungName) {
   const z = m.zentrum || (standort ? { lat: standort.lat, lon: standort.lon } : null);
   ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten werden geladen …" }));
   let g;
@@ -266,6 +266,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     const r = await fetch("/api/behoerde-details", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: m.authority_name || "", adresse: (m.kontakt || {}).adresse || "", lat: z && z.lat,
                              lon: z && z.lon, punkt: !!(m.geometry && m.geometry.type === "Point"), leika: leika || null,
+                              leistung_name: leistungName || null,
                              standort_lat: standort && standort.lat, standort_lon: standort && standort.lon,
                              web: (m.kontakt || {}).web || null,
                              ohne_zeiten: !!(m.amtlich && m.amtlich.oeffnungszeiten) }) });
@@ -275,7 +276,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
   const a = m.amtlich || {};
   if (a.oeffnungszeiten) g = { ...(g || {}), verfuegbar: true, gefunden: true, oeffnungszeiten: a.oeffnungszeiten,
                                intervalle: a.intervalle, zeiten_quelle: a.zeiten_quelle, zeiten_text: a.zeiten_text };
-  if (!g || !g.verfuegbar || !g.gefunden) {
+  if (!g || !g.verfuegbar || (!g.gefunden && !g.hessen_leistung)) {
     hinweise.append(el("li", { text: "Fachliche Zuständigkeit nicht durch PVOG bestätigt; angezeigt wird eine räumlich zugeordnete Verwaltungsstelle." }));
     hinweise.append(el("li", { text: "Öffnungszeiten: in den offenen Daten nicht gefunden – bitte auf der Webseite der Behörde prüfen." }));
     hinweise.hidden = false;
