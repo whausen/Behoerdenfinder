@@ -151,6 +151,12 @@ class App:
                 out["online_dienste"] = pv["online_dienste"]
                 out["gefunden"] = True
             stelle = pv.get("stelle") or {}
+            if pv.get("stellen"):
+                out["fachstellen"] = [
+                    {**{k: s[k] for k in ("name", "rolle", "adresse", "telefon", "email", "web", "lat", "lon") if s.get(k)},
+                     "quelle": "Portalverbund (PVOG)", "leistung_id": pv.get("leistung_id")}
+                    for s in pv["stellen"] if s.get("name")
+                ]
             gleich = True
             if stelle and name:
                 from ..osm_details import aehnlichkeit
