@@ -20,6 +20,7 @@ import time
 import tomllib
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass, field, fields
+from datetime import date
 from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
@@ -103,7 +104,8 @@ class Datenquelle:
         return {
             "id": self.id, "titel": self.titel, "herausgeber": self.herausgeber,
             "dienst": self.wfs_url, "lizenz": self.lizenz or None,
-            "quellenvermerk": self.quellenvermerk, "info_url": self.info_url or None,
+            "quellenvermerk": self.quellenvermerk.replace("{jahr}", str(date.today().year)),
+            "info_url": self.info_url or None,
             "datenstand": self.datenstand or None,
         }
 
