@@ -26,7 +26,7 @@ from ..geocode import GeocodingError, PhotonGeocoder, make_geocoder
 from ..google_places import PlacesClient, api_key, zentrum_von
 from ..osm_details import OsmClient
 from .. import leistung_details
-from ..zusatz_quellen import PvogClient, WebseitenClient, aus_properties
+from ..zusatz_quellen import PvogClient, HessenClient, WebseitenClient, aus_properties
 from ..pipeline import Finder, ResolveOptions
 from ..render import HEADLINES, kontakt
 
@@ -70,7 +70,7 @@ def details_client(quelle: str = "auto"):
 
 class App:
     def __init__(self, *, matcher=None, geocoders=None, options=None, resolve_fn=None, places=None, pvog=None,
-                 webseiten=None):
+                 webseiten=None, hessen=None):
         self.matcher = matcher
         self.geocoders = geocoders or {"nominatim": make_geocoder("nominatim"), "photon": make_geocoder("photon")}
         self.options = options or ResolveOptions()
@@ -78,6 +78,7 @@ class App:
         self.places = (places or None) if places is not None else details_client("auto")
         self.pvog = (pvog or None) if pvog is not None else PvogClient()
         self.webseiten = (webseiten or None) if webseiten is not None else WebseitenClient()
+        self.hessen = hessen if hessen is not None else HessenClient()
         self._lock = threading.Lock()
 
     def search(self, payload: dict) -> tuple[int, dict]:
@@ -180,6 +181,25 @@ class App:
                     out["jetzt_geoeffnet"] = None
                 if not gleich and stelle.get("web"):
                     out["web_zustaendig"] = stelle["web"]
+        # Hessen als ergänzende amtliche Quelle; PVOG-Fachstellen behalten Vorrang.
+        if self.hessen is not None and payload.get("leika") and standort and self.pvog is not None:
+            try:
+                ars = self.pvog.ars(standort[0], standort[1])
+                if ars and ars.startswith("06"):
+                    he = self.hessen.zustaendig(str(payload["leika"]), ars,
+                                                str(payload.get("leistung_name") or "") or None)
+                    if he.get("leistung_id"):
+                        out["hessen_leistung"] = {
+                            "id": he["leistung_id"], "url": he["leistung_url"],
+                            "zuordnung_vorhanden": he["zuordnung_vorhanden"]}
+                        existing = {s.get("name", "").casefold() for s in out.get("fachstellen", [])}
+                        extra = [s for s in he["stellen"] if s.get("name", "").casefold() not in existing]
+                        if extra:
+                            out.setdefault("fachstellen", []).extend(extra)
+                            out["gefunden"] = True
+                            quellen.append("Verwaltungsportal Hessen")
+            except Exception:
+                pass
         if not out.get("oeffnungszeiten") and self.webseiten is not None and not payload.get("ohne_zeiten"):
             kandidaten = [payload.get("web"), out.get("web"), out.get("web_zustaendig")]
             kommunal = re.search(r"stadt|gemeinde|verwaltung|rathaus|bürger|markt|landkreis|kreis", name, re.I)
