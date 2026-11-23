@@ -213,8 +213,15 @@ function zeige(d) {
       const fachfremderLink = m.source_id === "gemfa_vg25" &&
         /bzst\.de\/DE\/Service\/Behoerdenwegweiser\/Finanzamtsuche/i.test(m.evidence_url || "");
       const beleg = fachfremderLink ? null : m.evidence_url;
+      const quellenNamen = {
+        bzb_jobcenter: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:ba_jobcenter",
+        bzb_arbeitsagentur: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:ba_arbeitsagenturen",
+        bzb_amtsgericht: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:gerichte_amtsgerichte",
+        bzb_landgericht: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:gerichte_landgerichte",
+      };
+      const quellenName = quellenNamen[m.source_id] || m.source_id;
       const datenquelle = el("li", {}, el("b", { text: "Geodatenquelle: " }),
-        m.source_id, " – räumliche Zuständigkeitsdaten",
+        quellenName, " – räumliche Zuständigkeitsdaten",
         m.attribution ? el("p", { class: "quelle", text: m.attribution }) : null,
         m.license ? el("p", { class: "quelle", text: "Lizenz: " + m.license }) : null,
         m.fetched_at ? el("p", { class: "quelle", text: "Datenabruf: " + new Date(m.fetched_at).toLocaleDateString("de-DE") }) : null,
