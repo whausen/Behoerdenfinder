@@ -250,7 +250,7 @@ class HessenClient:
                 if tag == "a" and self.href is not None:
                     if urlparse(self.href).path == "/behoerde":
                         oid = parse_qs(urlparse(self.href).query).get("org_id", [""])[0]
-                        if re.fullmatch(r"L\\d+_\\d+", oid):
+                        if re.fullmatch(r"L\d+_\d+", oid):
                             self.items.append((oid, self.label.strip()))
                     self.href = None
         parser = Links()
@@ -258,7 +258,7 @@ class HessenClient:
         return list(dict.fromkeys(parser.items))
 
     def zustaendig(self, leika, ars, suchbegriff=None):
-        if not re.fullmatch(r"\\d{14}", str(leika or "")) or not re.fullmatch(r"\\d{12}", str(ars or "")):
+        if not re.fullmatch(r"\d{14}", str(leika or "")) or not re.fullmatch(r"\d{12}", str(ars or "")):
             return {}
         if not str(ars).startswith("06"):
             return {}
@@ -267,7 +267,7 @@ class HessenClient:
             cached = self._cache.get(key)
             if cached and self._clock() - cached[0] < CACHE_SEKUNDEN:
                 return cached[1]
-        query = (suchbegriff or "Hund anmelden")[:100] if leika == "99102013104000" else str(leika)
+        query = (suchbegriff or str(leika))[:100]
         search = self._request("/suche", {"lang": "de_DE", "suche": query, "regschl": ars})
         rows = ((search.get("result") or {}).get("leistungenRows") or [])
         exact = next((row for row in rows if str(row.get("leikaSchluessel")) == str(leika)), None)
@@ -275,7 +275,7 @@ class HessenClient:
             search = self._request("/suche", {"lang": "de_DE", "suche": str(leika), "regschl": ars})
             exact = next((row for row in ((search.get("result") or {}).get("leistungenRows") or [])
                           if str(row.get("leikaSchluessel")) == str(leika)), None)
-        if not exact or not re.fullmatch(r"L\\d+_\\d+", str(exact.get("id") or "")):
+        if not exact or not re.fullmatch(r"L\d+_\d+", str(exact.get("id") or "")):
             return {}
         lid = exact["id"]
         page = self._request("/leistung", {"leistung_id": lid, "regschl": ars, "lang": "de_DE"})
