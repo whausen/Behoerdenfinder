@@ -12,6 +12,7 @@ wfs_url = "https://sgx.geodatenzentrum.de/wfs_bzb_open"
 lizenz = "dl-de/by-2-0"
 quellenvermerk = "© BKG (Datenbezug gemäß Abrufdatum), dl-de/by-2-0; Datenquellen: https://sgx.geodatenzentrum.de/web_public/gdz/datenquellen/datenquellen_bzb-open.pdf"
 info_url = "https://gdz.bkg.bund.de/index.php/default/behoerdenzustaendigkeitsbereiche-open-bzb-open.html"
+datenstand = "03/2026"
 
 # layer       = fester Feature-Type-Name (kein GetCapabilities nötig)
 # layer_suche = Name ohne Namensraum oder Teilstring, wird in GetCapabilities gesucht
@@ -32,7 +33,7 @@ layer_suche = "geschaeftsstellen"
 [[behoerdentyp]]
 key = "jobcenter"
 label = "Jobcenter"
-layer_suche = "jobcenter"
+layer = "bzb-open:ba_jobcenter"
 anliegen = ["Grundsicherung für Arbeitsuchende beantragen"]
 
 [[behoerdentyp]]
