@@ -190,8 +190,14 @@ function zeige(d) {
         link(leistungsportal.uri, "Leistungsbeschreibung im Serviceportal")));
     }
     if (m.source_id) {
-      hinweise.append(el("li", {}, "Datenquelle der Behördenzuordnung: " + m.source_id,
-        m.evidence_url ? " · " : null, m.evidence_url ? link(m.evidence_url, "Datenquelle öffnen") : null));
+      // Räumlicher Verwaltungsstellen-Treffer ist kein Nachweis der fachlichen Zuständigkeit.
+      // Der bisherige BZSt-Link zur Finanzamtssuche belegt keine Hundesteuer-Zuständigkeit.
+      const fachfremderLink = m.source_id === "gemfa_vg25" &&
+        /bzst\.de\/DE\/Service\/Behoerdenwegweiser\/Finanzamtsuche/i.test(m.evidence_url || "");
+      const beleg = fachfremderLink ? null : m.evidence_url;
+      hinweise.append(el("li", {}, "Datenbasis der räumlichen Verwaltungsstellen-Zuordnung: " + m.source_id +
+        " (kein Nachweis der fachlichen Zuständigkeit)",
+        beleg ? " · " : null, beleg ? link(beleg, "Datenquelle öffnen") : null));
     }
     const extra = el("div", { class: "extra" });
     const navi = el("a", { class: "navi", target: "_blank", rel: "noopener", href: navigationsLink(m, null, d.standort),
