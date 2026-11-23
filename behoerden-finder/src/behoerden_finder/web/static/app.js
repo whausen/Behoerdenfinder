@@ -215,13 +215,23 @@ function zeige(d) {
       const beleg = fachfremderLink ? null : m.evidence_url;
       const quellenNamen = {
         bzb_jobcenter: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:ba_jobcenter",
+        bzb_geschaeftsstelle: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:ba_geschaeftsstellen",
         bzb_arbeitsagentur: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:ba_arbeitsagenturen",
+        bzb_regionaldirektion: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:ba_regionaldirektionen",
         bzb_amtsgericht: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:gerichte_amtsgerichte",
         bzb_landgericht: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:gerichte_landgerichte",
+        bzb_oberlandesgericht: "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer bzb-open:gerichte_oberlandesgerichte",
       };
-      const quellenName = quellenNamen[m.source_id] || m.source_id;
+      const istBzbOpen = String(m.source_id).startsWith("bzb_");
+      const quellenName = quellenNamen[m.source_id] || (istBzbOpen
+        ? "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open), Layer: " + m.source_id
+        : m.source_id);
+      const bzbProduktseite = "https://gdz.bkg.bund.de/index.php/default/behoerdenzustaendigkeitsbereiche-open-bzb-open.html";
       const datenquelle = el("li", {}, el("b", { text: "Geodatenquelle: " }),
-        quellenName, " – räumliche Zuständigkeitsdaten",
+        quellenName, " – tatsächlich verwendete räumliche Zuständigkeitsdaten",
+        istBzbOpen ? el("p", { class: "quelle" },
+          "Produkt und Datenbereitstellung: ", link(bzbProduktseite, "BKG – Behördenzuständigkeitsbereiche Open (BZB-Open)"),
+          " · WFS: ", link("https://sgx.geodatenzentrum.de/wfs_bzb_open", "wfs_bzb_open")) : null,
         m.attribution ? el("p", { class: "quelle", text: m.attribution }) : null,
         m.license ? el("p", { class: "quelle", text: "Lizenz: " + m.license }) : null,
         m.fetched_at ? el("p", { class: "quelle", text: "Datenabruf: " + new Date(m.fetched_at).toLocaleDateString("de-DE") }) : null,
