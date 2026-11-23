@@ -1,0 +1,141 @@
+{
+  "title": "LeiKa-Leistungen und BKG-BZB-Open-Zustaendigkeitsbereiche",
+  "version": 1,
+  "status": "research_mapping_not_yet_runtime_enforced",
+  "reviewed_at": "2026-11-23",
+  "description": "Redaktionelle Zuordnung konkreter LeiKa-Leistungen zu den bereits im Resolver konfigurierten BKG-BZB-Open-Flaechenkategorien. Die Zuordnung steuert noch nicht den Laufzeit-Matcher. Sie dient als pruefbare Grundlage fuer die anschliessende Integration.",
+  "spatial_data_source": {
+    "name": "BKG Behoerdenzustaendigkeitsbereiche Open (BZB-Open)",
+    "product_url": "https://gdz.bkg.bund.de/index.php/default/behoerdenzustaendigkeitsbereiche-open-bzb-open.html",
+    "wfs": "https://sgx.geodatenzentrum.de/wfs_bzb_open",
+    "license": "dl-de/by-2-0",
+    "attribution": "© BKG (Jahr des Datenbezugs) dl-de/by-2-0, Datenquellen: https://sgx.geodatenzentrum.de/web_public/gdz/datenquellen/datenquellen_bzb-open.pdf",
+    "reference_basis": "VG250",
+    "published_update_cycle": "jaehrlich",
+    "published_data_status": "03.2026",
+    "resolver_sources": {
+      "jobcenter": {
+        "source_id": "bzb_jobcenter",
+        "layer": "bzb-open:ba_jobcenter",
+        "resolver_category": "jobcenter"
+      },
+      "arbeitsagentur": {
+        "source_id": "bzb_arbeitsagentur",
+        "layer": "bzb-open:ba_arbeitsagenturen",
+        "resolver_category": "arbeitsagentur"
+      },
+      "amtsgericht": {
+        "source_id": "bzb_amtsgericht",
+        "layer": "bzb-open:gerichte_amtsgerichte",
+        "resolver_category": "amtsgericht"
+      }
+    }
+  },
+  "mappings": [
+    {
+      "id": "grundsicherungsgeld_sgb2",
+      "leistung": "Grundsicherungsgeld beantragen (frueher Buergergeld)",
+      "leika": ["99107108017000"],
+      "resolver_category": "jobcenter",
+      "bzb_source_id": "bzb_jobcenter",
+      "spatial_anchor": "wohnsitz",
+      "mapping_status": "verified_candidate",
+      "notes": "Bundesportal-Leistung fuer Grundsicherung fuer Arbeitsuchende nach SGB II. Die BKG-Flaeche ermittelt den Jobcenter-Bezirk; sie prueft weder Anspruch noch besondere Fallzustaendigkeiten.",
+      "evidence": ["https://verwaltung.bund.de/leistungsverzeichnis/DE/leistung/99107108017000"]
+    },
+    {
+      "id": "buergergeld_veraenderungsmitteilung",
+      "leistung": "Buergergeld: Veraenderungsmitteilung abgeben",
+      "leika": ["99061011000000"],
+      "resolver_category": "jobcenter",
+      "bzb_source_id": "bzb_jobcenter",
+      "spatial_anchor": "wohnsitz",
+      "mapping_status": "verified_candidate",
+      "notes": "Zustaendiges Jobcenter grundsaetzlich nach Wohnort; bei laufendem Leistungsfall kann die bereits leistungsbearbeitende Stelle massgeblich sein.",
+      "evidence": ["https://verwaltung.bund.de/leistungsverzeichnis/de/leistung/99061011000000"]
+    },
+    {
+      "id": "arbeitslosengeld_beantragen",
+      "leistung": "Arbeitslosengeld beantragen",
+      "leika": ["99038001017000"],
+      "resolver_category": "arbeitsagentur",
+      "bzb_source_id": "bzb_arbeitsagentur",
+      "spatial_anchor": "wohnsitz",
+      "mapping_status": "verified_candidate",
+      "notes": "BZB-Open liefert den Agenturbezirk. Fuer persoenliche Vorsprache oder Termine muss zusaetzlich eine konkrete Geschaeftsstelle ermittelt werden.",
+      "evidence": ["https://verwaltung.bund.de/leistungsverzeichnis/DE/leistung/99038001017000"]
+    },
+    {
+      "id": "arbeitslos_melden",
+      "leistung": "Arbeitslos melden",
+      "leika": ["99038006029000"],
+      "resolver_category": "arbeitsagentur",
+      "bzb_source_id": "bzb_arbeitsagentur",
+      "spatial_anchor": "wohnsitz",
+      "mapping_status": "verified_candidate",
+      "notes": "Oertlich zustaendige Agentur fuer Arbeit nach Wohnsitz. Eine elektronische Arbeitslosmeldung ist ebenfalls moeglich.",
+      "evidence": ["https://verwaltung.bund.de/leistungsverzeichnis/DE/leistung/99038006029000"]
+    },
+    {
+      "id": "grundbuchauszug",
+      "leistung": "Grundbuchauszug beantragen",
+      "leika": ["99043006000000"],
+      "resolver_category": "amtsgericht",
+      "bzb_source_id": "bzb_amtsgericht",
+      "spatial_anchor": "lage_des_grundstuecks",
+      "mapping_status": "verified_candidate",
+      "requires_context": true,
+      "notes": "Nicht die Wohnadresse verwenden: massgeblich ist die Lage des Grundstuecks bzw. der Grundbuchbezirk. Berechtigtes Interesse ist gesondert zu pruefen.",
+      "evidence": ["https://verwaltung.bund.de/leistungsverzeichnis/DE/leistung/99043006000000"]
+    },
+    {
+      "id": "erbschein",
+      "leistung": "Erbschein beantragen",
+      "leika": ["99046010001000"],
+      "resolver_category": "amtsgericht",
+      "bzb_source_id": "bzb_amtsgericht",
+      "spatial_anchor": "letzter_gewoehnlicher_aufenthalt_des_erblassers",
+      "mapping_status": "verified_candidate",
+      "requires_context": true,
+      "notes": "Nicht automatisch die aktuelle Adresse der anfragenden Person verwenden. Oertliche Nachlassgerichtszustaendigkeit richtet sich nach dem letzten gewoehnlichen Aufenthalt des Erblassers; Ausnahmen und Auslandsfaelle gesondert behandeln.",
+      "evidence": ["https://verwaltung.bund.de/leistungsverzeichnis/de/leistung/99046010001000"]
+    },
+    {
+      "id": "beratungshilfe",
+      "leistung": "Beratungshilfe ausserhalb eines gerichtlichen Verfahrens oder im obligatorischen Gueteverfahren gewaehren",
+      "leika": ["99046074080000"],
+      "resolver_category": "amtsgericht",
+      "bzb_source_id": "bzb_amtsgericht",
+      "spatial_anchor": "wohnsitz",
+      "mapping_status": "verified_candidate",
+      "notes": "Beratungshilfe kann beim Amtsgericht beantragt werden; Online-Ausfuellen und Einreichen per Post bzw. ueber Kanzlei sind ebenfalls moeglich.",
+      "evidence": ["https://verwaltung.bund.de/leistungsverzeichnis/de/leistung/99046074080000", "https://service.justiz.de/beratungshilfe/beratungshilfeschein"]
+    }
+  ],
+  "not_included_yet": [
+    {
+      "leistung": "Erst- oder Weiterbewilligungsantrag Buergergeld/Grundsicherungsgeld fuer unter 25-Jaehrige",
+      "reason": "Besondere Alters-/Haushaltskonstellationen und die aktuelle LeiKa-Fuehrung muessen gegen den lokalen FIM-Katalog abgeglichen werden."
+    },
+    {
+      "leistung": "Arbeitsuchend melden",
+      "reason": "LeiKa-Schluessel und konkrete lokale Zuordnung vor Aufnahme in die produktive Mappingliste noch gegen FIM/PVOG verifizieren."
+    },
+    {
+      "leistung": "Geschaeftsstelle der Agentur fuer Arbeit finden",
+      "reason": "BZB-Open enthaelt einen eigenen Geschaeftsstellen-Layer; im aktuellen Resolver-Quellenmanifest ist dieser Layer nicht als eigenstaendige Kategorie angebunden. Agenturbezirk und konkrete Geschaeftsstelle duerfen nicht gleichgesetzt werden."
+    },
+    {
+      "leistung": "Familiengericht, Insolvenzgericht, Registergericht, Mahnverfahren",
+      "reason": "Spezielle sachliche und funktionelle Gerichtszustaendigkeiten koennen von der allgemeinen Amtsgerichts-Flaeche abweichen."
+    }
+  ],
+  "integration_rules": [
+    "Leistung zuerst ueber den exakten LeiKa-Schluessel zuordnen; Freitext-Keywords nur als Vorschlag, nicht als alleiniger Beleg verwenden.",
+    "Die BZB-Open-Flaeche liefert die raeumliche Zustaendigkeit der jeweiligen Behoerdenkategorie, nicht die sachliche oder persoenliche Anspruchspruefung.",
+    "Vor einer Punkt-in-Polygon-Abfrage den fuer die Leistung passenden Ortsbezug erfragen oder aus dem Fallkontext bestimmen.",
+    "Wenn die Leistung einen anderen Ortsbezug als den Wohnsitz benoetigt, keine stille Verwendung der Wohnadresse.",
+    "Treffer als BKG BZB-Open kennzeichnen und Datenstand, Layer, Quelle sowie Lizenz in der Ergebnisansicht ausgeben.",
+    "Wenn mehrere fachliche oder verfahrensrechtliche Zustaendigkeiten moeglich sind, Kontext abfragen oder das Ergebnis als Orientierung kennzeichnen."
+  ]
+}
