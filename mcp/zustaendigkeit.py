@@ -84,6 +84,7 @@ class Datenquelle:
     kurzname: str = ""
     lizenz: str = ""
     info_url: str = ""
+    datenstand: str = ""  # vom Datenanbieter veröffentlichter Aktualitätsstand
     wfs_version: str = "1.1.0"
     output_format: str = "application/json"
     srs: str = "EPSG:4326"  # angefordertes CRS; der Dienst rechnet um
@@ -103,6 +104,7 @@ class Datenquelle:
             "id": self.id, "titel": self.titel, "herausgeber": self.herausgeber,
             "dienst": self.wfs_url, "lizenz": self.lizenz or None,
             "quellenvermerk": self.quellenvermerk, "info_url": self.info_url or None,
+            "datenstand": self.datenstand or None,
         }
 
 
@@ -470,6 +472,30 @@ def _sicher(name: str) -> str:
 
 def _cache_pfad(quelle_id: str, layer: str) -> Path:
     return CACHE_DIR / _sicher(quelle_id) / (_sicher(layer) + ".geojson")
+
+
+def layer_metadaten(typ: str) -> dict:
+    """Quellen-, Layer- und Cache-Metadaten des tatsächlich verwendeten Behördentyps."""
+    t = _typ(typ)
+    quelle = _quelle(t.quelle)
+    layer = layer_fuer(typ)
+    cache = _cache_pfad(quelle.id, layer)
+    datenabruf = (
+        time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(cache.stat().st_mtime))
+        if cache.is_file() else None
+    )
+    return {
+        **quelle.info(),
+        "behoerdentyp": t.key,
+        "behoerde": t.label,
+        "layer": layer,
+        "datenabruf": datenabruf,
+        "cache_status": "lokaler_snapshot_vorhanden" if cache.is_file() else "kein_lokaler_snapshot",
+        "datenstand_hinweis": (
+            "Datenstand des Anbieters; Datenabruf bezeichnet separat den Zeitstempel "
+            "des lokalen GeoJSON-Snapshots."
+        ),
+    }
 
 
 def lade_flaechen(quelle_id: str, layer: str, neu_laden: bool = False) -> gpd.GeoDataFrame:
