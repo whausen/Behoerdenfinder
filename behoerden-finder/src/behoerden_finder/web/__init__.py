@@ -148,13 +148,15 @@ class App:
                 pv = self.pvog.zustaendig(str(payload["leika"]), standort[0], standort[1], name)
             except Exception:
                 pv = {}
+            out["pvog_leistung_id"] = pv.get("leistung_id")
+            out["ars"] = pv.get("ars")
             if pv.get("online_dienste"):
                 out["online_dienste"] = pv["online_dienste"]
                 out["gefunden"] = True
             stelle = pv.get("stelle") or {}
             if pv.get("stellen"):
                 out["fachstellen"] = [
-                    {**{k: s[k] for k in ("name", "rolle", "adresse", "telefon", "email", "web", "lat", "lon") if s.get(k)},
+                    {**{k: s[k] for k in ("name", "rolle", "adresse", "telefon", "email", "web", "lat", "lon", "organisation_id") if s.get(k)},
                      "quelle": "Portalverbund (PVOG)", "leistung_id": pv.get("leistung_id")}
                     for s in pv["stellen"] if s.get("name")
                 ]
@@ -165,7 +167,7 @@ class App:
             if stelle:
                 # Fachlich zugeordnete Stelle separat ausweisen; nicht mit der allgemeinen
                 # Verwaltungsstelle vermischen (insbesondere bei abweichendem Namen).
-                out["fachstelle"] = {k: stelle[k] for k in ("name", "rolle", "adresse", "telefon", "email", "web", "lat", "lon") if stelle.get(k)}
+                out["fachstelle"] = {k: stelle[k] for k in ("name", "rolle", "adresse", "telefon", "email", "web", "lat", "lon", "organisation_id") if stelle.get(k)}
                 out["fachstelle"]["quelle"] = "Portalverbund (PVOG)"
                 out["fachstelle"]["leistung_id"] = pv.get("leistung_id")
                 quellen.append("pvog")
@@ -185,6 +187,8 @@ class App:
         if self.hessen is not None and payload.get("leika") and standort and self.pvog is not None:
             try:
                 ars = self.pvog.ars(standort[0], standort[1])
+                if ars:
+                    out["ars"] = ars
                 if ars and ars.startswith("06"):
                     he = self.hessen.zustaendig(str(payload["leika"]), ars,
                                                 str(payload.get("leistung_name") or "") or None)
