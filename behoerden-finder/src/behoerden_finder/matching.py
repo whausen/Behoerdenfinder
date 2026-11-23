@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 import re
+import sqlite3
 
 from . import faelle, themen
 
@@ -171,6 +172,7 @@ class AuthorityMatcher:
         self._am = None
         self._taxonomy = None
         self._regions = None
+        self._exact_titles = None
 
     def _ensure(self) -> None:
         if self._am is not None:
@@ -216,20 +218,25 @@ class AuthorityMatcher:
         outcome = interpret_match(raw, accept_ambiguous=self.accept_ambiguous)
         if self.topic_hints:
             outcome = apply_topic_hints(outcome, anliegen, self._katalog, faelle_vorrang=self.faelle_vorrang)
-        # Exakte Titel haben Vorrang vor semantisch ähnlichen Sonderfällen.
+        # Amtliche Titel aus dem gesamten lokalen Katalog, nicht nur den Such-Top-Treffern.
         norm = lambda value: " ".join(re.findall(r"\w+", str(value or "").casefold()))
+        if self._exact_titles is None:
+            titles = {}
+            with sqlite3.connect(am.DB.resolve().as_uri() + "?mode=ro", uri=True) as con:
+                for key, title in con.execute("""
+                    SELECT DISTINCT json_extract(document, '$.leistungsschluessel'),
+                                    json_extract(document, '$.titel')
+                    FROM records WHERE json_valid(document)
+                """):
+                    if isinstance(key, str) and re.fullmatch(r"[0-9]{14}", key) and key[8:] != "000000" and title:
+                        titles.setdefault(norm(title), set()).add(key)
+            self._exact_titles = titles
         query = norm(anliegen)
-        exact = [s for s in raw.get("leistungen") or []
-                 if norm(s.get("titel")) == query and s.get("leistungsschluessel")]
-        if exact:
-            chosen = next((s for s in exact if str(s["leistungsschluessel"]).endswith("00")), exact[0])
-            outcome = replace(outcome, service={k: chosen.get(k) for k in ("titel", "leistungsschluessel", "score")})
-        # Amtlich belegte Standardleistung, auch wenn der Suchindex nur Sonderfälle liefert.
-        if query in {"personalausweis beantragen", "neuen personalausweis beantragen"}:
-            outcome = replace(outcome, service={"titel": "Personalausweis beantragen",
-                              "leistungsschluessel": "99008001012000", "score": None})
-        elif query in {"vorläufigen personalausweis beantragen", "vorläufiger personalausweis beantragen",
-                       "personalausweis vorläufig beantragen"}:
-            outcome = replace(outcome, service={"titel": "Vorläufigen Personalausweis beantragen",
-                              "leistungsschluessel": "99008001012002", "score": None})
+        keys = self._exact_titles.get(query, set())
+        # Nur eindeutige konkrete Leistungen übernehmen; keine willkürliche Auswahl
+        # zwischen mehreren Schlüsseln und keine übergeordneten Leistungsobjekte.
+        if len(keys) == 1:
+            key = next(iter(keys))
+            outcome = replace(outcome, service={"titel": anliegen.strip(),
+                              "leistungsschluessel": key, "score": None})
         return outcome
