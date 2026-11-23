@@ -165,7 +165,9 @@ class PvogClient:
             from .osm_details import aehnlichkeit
             best = max(stellen, key=lambda s: (aehnlichkeit(name or "", s.get("name") or "") if name else 0,
                                                s.get("rolle") == "Zuständige Stelle"))
-        return {**{k: v for k, v in data.items() if k != "stellen"}, **({"stelle": best} if best else {})}
+        return {**{k: v for k, v in data.items() if k != "stellen"},
+                "stellen": stellen,
+                **({"stelle": best} if best else {})}
 
     @staticmethod
     def _stelle(s: dict) -> dict:
