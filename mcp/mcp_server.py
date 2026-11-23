@@ -199,7 +199,7 @@ def behoerde_finden(
     # Exakte Layer-Metadaten je tatsächlich abgefragtem BZB-/VG250-Behördentyp.
     kat = bf.KATEGORIEN[a["kategorie"]["key"]]
     layer_nach_quelle: dict[str, list[dict]] = {}
-    for typ_key in kat.flaechen:
+    for typ_key in dict.fromkeys(([bf.GEMEINDE_TYP] if bf.GEMEINDE_TYP in zf.BEHOERDENTYPEN else []) + list(kat.flaechen)):
         typ = zf.BEHOERDENTYPEN.get(typ_key)
         if typ is None:
             continue
