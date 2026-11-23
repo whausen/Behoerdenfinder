@@ -287,7 +287,7 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     const stellen = (g.fachstellen || []).length ? g.fachstellen : [g.fachstelle];
     for (const s of stellen) {
     const fach = el("section", { class: "fachstelle" },
-      el("h4", { text: "Fachlich zuständige Stelle (PVOG)" }),
+      el("h4", { text: s.quelle === "Verwaltungsportal Hessen" ? "Amtlich zugeordneter Ansprechpartner (Hessen)" : "Fachlich zuständige Stelle (PVOG)" }),
       el("p", { text: s.name }));
     if (s.adresse) fach.append(el("p", { text: s.adresse }));
     if (s.telefon) fach.append(el("p", {}, "Tel. ", el("a", { href: "tel:" + s.telefon.replace(/[^\\d+]/g, ""), text: s.telefon })));
@@ -297,7 +297,11 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     ziel.append(fach);
     }
   } else if (leika) {
-    ziel.append(el("p", { class: "quelle", text: "Fachliche Zuständigkeit durch PVOG nicht bestätigt; allgemeine Verwaltungsstelle." }));
+    ziel.append(el("p", { class: "quelle", text: "Fachliche Zuständigkeit für diese Leistung nicht bestätigt; allgemeine Verwaltungsstelle." }));
+  }
+  if (g.hessen_leistung && !g.hessen_leistung.zuordnung_vorhanden) {
+    ziel.append(el("p", { class: "quelle" }, "Verwaltungsportal Hessen: Leistung gefunden, aber keine Organisation zugeordnet. ",
+      link(g.hessen_leistung.url, "Amtliche Leistungsseite")));
   }
   if (g.adresse && !k.adresse) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
   if (g.oeffnungszeiten && g.oeffnungszeiten.length) {
