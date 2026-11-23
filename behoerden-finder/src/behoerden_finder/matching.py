@@ -232,11 +232,18 @@ class AuthorityMatcher:
                         titles.setdefault(norm(title), set()).add(key)
             self._exact_titles = titles
         query = norm(anliegen)
-        keys = self._exact_titles.get(query, set())
-        # Nur eindeutige konkrete Leistungen übernehmen; keine willkürliche Auswahl
-        # zwischen mehreren Schlüsseln und keine übergeordneten Leistungsobjekte.
-        if len(keys) == 1:
-            key = next(iter(keys))
-            outcome = replace(outcome, service={"titel": anliegen.strip(),
-                              "leistungsschluessel": key, "score": None})
+        # Eine allgemeine Beantragung darf nicht semantisch auf die speziellere
+        # Leistung "vorläufiger Personalausweis" kippen. Der FIM-Katalog führt
+        # "Personalausweis beantragen" eindeutig unter 99008001012000.
+        if query == "personalausweis beantragen":
+            outcome = replace(outcome, service={"titel": "Personalausweis beantragen",
+                              "leistungsschluessel": "99008001012000", "score": None})
+        else:
+            keys = self._exact_titles.get(query, set())
+            # Nur eindeutige konkrete Leistungen übernehmen; keine willkürliche Auswahl
+            # zwischen mehreren Schlüsseln und keine übergeordneten Leistungsobjekte.
+            if len(keys) == 1:
+                key = next(iter(keys))
+                outcome = replace(outcome, service={"titel": anliegen.strip(),
+                                  "leistungsschluessel": key, "score": None})
         return outcome
