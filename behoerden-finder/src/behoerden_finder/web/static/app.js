@@ -209,13 +209,18 @@ function zeige(d) {
     }
     if (m.source_id) {
       // Räumlicher Verwaltungsstellen-Treffer ist kein Nachweis der fachlichen Zuständigkeit.
-      // Der bisherige BZSt-Link zur Finanzamtssuche belegt keine Hundesteuer-Zuständigkeit.
+      // Die Geodatenquelle ist getrennt von der Hintergrundkarte (TopPlusOpen) auszuweisen.
       const fachfremderLink = m.source_id === "gemfa_vg25" &&
         /bzst\.de\/DE\/Service\/Behoerdenwegweiser\/Finanzamtsuche/i.test(m.evidence_url || "");
       const beleg = fachfremderLink ? null : m.evidence_url;
-      hinweise.append(el("li", {}, "Datenbasis der räumlichen Verwaltungsstellen-Zuordnung: " + m.source_id +
-        " (kein Nachweis der fachlichen Zuständigkeit)",
-        beleg ? " · " : null, beleg ? link(beleg, "Datenquelle öffnen") : null));
+      const datenquelle = el("li", {}, el("b", { text: "Geodatenquelle: " }),
+        m.source_id, " – räumliche Zuständigkeitsdaten",
+        m.attribution ? el("p", { class: "quelle", text: m.attribution }) : null,
+        m.license ? el("p", { class: "quelle", text: "Lizenz: " + m.license }) : null,
+        m.fetched_at ? el("p", { class: "quelle", text: "Datenabruf: " + new Date(m.fetched_at).toLocaleDateString("de-DE") }) : null,
+        beleg ? el("span", {}, link(beleg, "Fachliche Quelle / Dokumentation öffnen")) : null);
+      hinweise.append(datenquelle);
+      hinweise.append(el("li", { class: "quelle", text: "Die Kartenhintergrundkarte ist unabhängig davon TopPlusOpen (BKG)." }));
     }
     const extra = el("div", { class: "extra" });
     const navi = el("a", { class: "navi", target: "_blank", rel: "noopener", href: navigationsLink(m, null, d.standort),
