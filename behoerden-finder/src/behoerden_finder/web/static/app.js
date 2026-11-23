@@ -148,6 +148,10 @@ function zeige(d) {
     };
     if (det.gefunden && det.online?.moeglich) zeigeOnline();
     teile.push(zeile);
+    const angefragt = ($("anliegen").value || "").toLocaleLowerCase("de-DE");
+    if (/vorläufig/.test(d.leistung.titel.toLocaleLowerCase("de-DE")) && !/vorläufig/.test(angefragt)) {
+      teile.push(el("p", { class: "fehler", text: "Achtung: Die gefundene Leistung betrifft einen vorläufigen Personalausweis. Bitte prüfen, ob dies dem gewünschten Anliegen entspricht." }));
+    }
     if (det.gefunden) teile.push(leistungsDetails(det));
   }
   if (kat.id) {
@@ -292,28 +296,47 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
   const k = m.kontakt || {};
   if ((g.fachstellen || []).length || (g.fachstelle && g.fachstelle.name)) {
     const stellen = (g.fachstellen || []).length ? g.fachstellen : [g.fachstelle];
-    const prioritaet = (s) => {
-      if (s.quelle === "Portalverbund (PVOG)") return 0;
-      const n = (s.name || "").toLocaleLowerCase("de-DE");
-      if (/zentrales bürgeramt|^bürgerbüro$|^zentrales bürgerbüro$/.test(n)) return 1;
+    // Gleiche Dienststellen aus PVOG und Hessen zusammenführen; PVOG-Kontaktdaten behalten.
+    const normal = (name) => (name || "").toLocaleLowerCase("de-DE")
+      .replace(/\\s*\\/\\s*/g, " ").replace(/[^a-z0-9äöüß]+/g, " ").trim();
+    const einzigartig = new Map();
+    for (const stelle of stellen) {
+      const key = normal(stelle.name);
+      if (!key) continue;
+      const alt = einzigartig.get(key);
+      if (!alt || (alt.quelle !== "Portalverbund (PVOG)" && stelle.quelle === "Portalverbund (PVOG)")) {
+        einzigartig.set(key, stelle);
+      }
+    }
+    const prioritaet = (stelle) => {
+      const n = normal(stelle.name);
+      if (/zentrales bürgeramt|^bürgerbüro$|^zentrales bürgerbüro$/.test(n)) return 0;
+      if (/^bürgeramt statistik und wahlen$/.test(n)) return 1;
       if (/außenstelle|ortsverwaltung/.test(n)) return 3;
       return 2;
     };
-    const geordnet = stellen.map((stelle, i) => ({ stelle, i }))
-      .sort((a, b) => prioritaet(a.stelle) - prioritaet(b.stelle) || a.i - b.i)
+    const geordnet = [...einzigartig.values()].map((stelle, i) => ({ stelle, i }))
+      .sort((x, y) => prioritaet(x.stelle) - prioritaet(y.stelle) || x.i - y.i)
       .map(x => x.stelle);
     const anzeigen = (liste, container) => {
-    for (const s of liste) {
-    const fach = el("section", { class: "fachstelle" },
-      el("h4", { text: s.quelle === "Verwaltungsportal Hessen" ? "Amtlich zugeordneter Ansprechpartner (Hessen)" : "Fachlich zuständige Stelle (PVOG)" }),
-      el("p", { text: s.name }));
-    if (s.adresse) fach.append(el("p", { text: s.adresse }));
-    if (s.telefon) fach.append(el("p", {}, "Tel. ", el("a", { href: "tel:" + s.telefon.replace(/[^\\d+]/g, ""), text: s.telefon })));
-    if (s.email) fach.append(el("p", {}, el("a", { href: "mailto:" + s.email, text: s.email })));
-    if (s.web) fach.append(el("p", {}, link(s.web, "Webseite der Dienststelle")));
-    fach.append(el("p", { class: "quelle", text: "Quelle: " + (s.quelle || "Portalverbund (PVOG)") }));
-    container.append(fach);
-    }
+      for (const stelle of liste) {
+        const fach = el("section", { class: "fachstelle" },
+          el("h4", { text: stelle.quelle === "Verwaltungsportal Hessen"
+            ? "Amtlich zugeordneter Ansprechpartner (Hessen)" : "Fachlich zuständige Stelle (PVOG)" }),
+          el("p", { text: stelle.name }));
+        if (stelle.adresse) {
+          fach.append(el("p", { text: stelle.adresse }));
+          const params = new URLSearchParams({ api: "1", travelmode: "transit", destination: stelle.adresse });
+          if (standort) params.set("origin", standort.lat + "," + standort.lon);
+          fach.append(el("p", {}, link("https://www.google.com/maps/dir/?" + params, "Route zu dieser Dienststelle")));
+        }
+        if (stelle.telefon) fach.append(el("p", {}, "Tel. ",
+          el("a", { href: "tel:" + stelle.telefon.replace(/[^\\d+]/g, ""), text: stelle.telefon })));
+        if (stelle.email) fach.append(el("p", {}, el("a", { href: "mailto:" + stelle.email, text: stelle.email })));
+        if (stelle.web) fach.append(el("p", {}, link(stelle.web, "Webseite der Dienststelle")));
+        fach.append(el("p", { class: "quelle", text: "Quelle: " + (stelle.quelle || "Portalverbund (PVOG)") }));
+        container.append(fach);
+      }
     };
     if (geordnet.length > 3) {
       anzeigen(geordnet.slice(0, 2), ziel);
@@ -321,10 +344,12 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
         el("summary", { text: `Weitere zugeordnete Stellen anzeigen (${geordnet.length - 2})` }));
       anzeigen(geordnet.slice(2), weitere);
       ziel.append(weitere);
-      ziel.append(el("p", { class: "quelle", text: "Reihenfolge als Orientierung; Leistungsangebot und Termine bitte bei der jeweiligen Stelle prüfen." }));
+      ziel.append(el("p", { class: "quelle", text: "Die Reihenfolge ist keine amtliche Rangfolge. Leistungen und Termine bei der jeweiligen Stelle prüfen." }));
     } else {
       anzeigen(geordnet, ziel);
     }
+    // Bei mehreren Standorten darf die Navigation nicht pauschal zum Rathaus führen.
+    if (geordnet.length > 1) navi.hidden = true;
   } else if (leika) {
     ziel.append(el("p", { class: "quelle", text: "Fachliche Zuständigkeit für diese Leistung nicht bestätigt; allgemeine Verwaltungsstelle." }));
   }
@@ -332,8 +357,10 @@ async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika
     ziel.append(el("p", { class: "quelle" }, "Verwaltungsportal Hessen: Leistung gefunden, aber keine Organisation zugeordnet. ",
       link(g.hessen_leistung.url, "Amtliche Leistungsseite")));
   }
-  if (g.adresse && !k.adresse) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
-  if (g.oeffnungszeiten && g.oeffnungszeiten.length) {
+  if (g.adresse && !k.adresse && !mehrereFachstellen) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
+  const mehrereFachstellen = (g.fachstellen || []).length > 1;
+  if (mehrereFachstellen && g.oeffnungszeiten?.length) ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten unterscheiden sich je nach Dienststelle; bitte beim jeweiligen Standort prüfen." }));
+  if (g.oeffnungszeiten && g.oeffnungszeiten.length && !mehrereFachstellen) {
     const heute = (new Date().getDay() + 6) % 7;
     ziel.append(el("p", {}, el("b", { text: "Öffnungszeiten" })),
       el("ul", { class: "zeiten" }, ...g.oeffnungszeiten.map((t, i) => el("li", { text: t, class: g.oeffnungszeiten.length === 7 && i === heute ? "heute" : "" }))));
