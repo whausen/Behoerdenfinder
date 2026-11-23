@@ -42,6 +42,17 @@ def kontakt(properties: dict | None) -> dict:
     line = " ".join(x for x in (street, number if street and number and number not in street else None) if x)
     place = " ".join(x for x in (_first(props, _ZIP), _first(props, _CITY)) if x)
     address = ", ".join(x for x in (line, place) if x)
+    if not line and props.get("gemfa_municipality") and isinstance(props.get("address"), list):
+        for anschrift in props["address"]:
+            if not isinstance(anschrift, dict) or not _first(anschrift, ("Strasse",)):
+                continue
+            art = anschrift.get("{http://www.w3.org/2001/XMLSchema-instance}type")
+            if art not in (None, "HausanschriftType"):
+                continue
+            strasse = _first(anschrift, ("Strasse",))
+            ort = " ".join(x for x in (_first(anschrift, ("PLZ",)), _first(anschrift, ("Ort",))) if x)
+            address = ", ".join(x for x in (strasse, ort) if x)
+            break
     return {k: v for k, v in {"adresse": address or None, "telefon": _first(props, _PHONE),
                               "email": _first(props, _MAIL), "web": _first(props, _WEB)}.items() if v}
 

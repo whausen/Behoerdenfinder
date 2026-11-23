@@ -126,10 +126,16 @@ class App:
         name = str(payload.get("name") or "")
         out: dict = {"verfuegbar": True, "gefunden": False}
         quellen = []
-        if self.places is not None:
+        adresse = str(payload.get("adresse") or "").strip()
+        punkt = bool(payload.get("punkt"))
+        # Der Mittelpunkt eines Zuständigkeitsgebiets belegt keinen Behördenstandort.
+        if self.places is not None and (adresse or punkt):
             try:
-                g = self.places.details(name, str(payload.get("adresse") or ""), zentrum, punkt=bool(payload.get("punkt")))
-                if g.get("gefunden"):
+                g = self.places.details(name, adresse, zentrum, punkt=punkt)
+                trefferadresse = str(g.get("adresse") or "")
+                normalisiert = lambda text: re.sub(r"\W+", "", text.casefold())
+                passt = not adresse or normalisiert(adresse) == normalisiert(trefferadresse)
+                if g.get("gefunden") and passt:
                     out.update(g)
                     if g.get("oeffnungszeiten"):
                         out["zeiten_quelle"] = {"osm": "OpenStreetMap", "google": "Google"}.get(g.get("quelle"), g.get("quelle"))
@@ -143,6 +149,7 @@ class App:
                 pv = {}
             if pv.get("online_dienste"):
                 out["online_dienste"] = pv["online_dienste"]
+                out["gefunden"] = True
             stelle = pv.get("stelle") or {}
             gleich = True
             if stelle and name:

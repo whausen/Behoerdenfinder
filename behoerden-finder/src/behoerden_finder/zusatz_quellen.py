@@ -255,7 +255,8 @@ class WebseitenClient:
         text = _html_text(html)
         for m in _SCHLUESSEL.finditer(text):
             abschnitt = text[m.start(): m.start() + 700]
-            if oz.parse(abschnitt):
+            week = oz.parse(abschnitt)
+            if week and any(week):
                 return abschnitt
         return None
 

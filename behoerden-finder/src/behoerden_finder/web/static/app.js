@@ -138,11 +138,15 @@ async function suche(kategorie) {
 function zeige(d) {
   const teile = [];
   const kat = d.kategorie || {};
+  let zeigeOnline;
   if (d.leistung && d.leistung.titel) {
     const det = d.leistung.details || {};
     const zeile = el("p", { class: "meta" }, el("b", { text: "Leistung: " }), d.leistung.titel);
-    if (det.gefunden && det.online) zeile.append(el("span", { class: "badge" + (det.online.moeglich ? " amtlich" : ""),
-      text: det.online.moeglich ? "auch online möglich" : "kein Online-Dienst genannt" }));
+    const onlineMarke = el("span", { class: "badge amtlich", text: "auch online möglich" });
+    zeigeOnline = () => {
+      if (!onlineMarke.parentNode) zeile.append(onlineMarke);
+    };
+    if (det.gefunden && det.online?.moeglich) zeigeOnline();
     teile.push(zeile);
     if (det.gefunden) teile.push(leistungsDetails(det));
   }
@@ -179,15 +183,24 @@ function zeige(d) {
     if (k.web) karteEintrag.append(el("p", {}, link(k.web, "Webseite")));
     const dist = entfernung(m.distance_m);
     if (dist) karteEintrag.append(el("p", { class: "quelle", text: dist }));
-    if (m.source_id) karteEintrag.append(el("p", { class: "quelle" }, "Quelle: " + m.source_id,
-                                            m.evidence_url ? " · " : null, m.evidence_url ? link(m.evidence_url, "Beleg") : null));
+    const hinweise = el("ul", { class: "hinweise" });
+    const leistungsportal = d.leistung?.details?.portal?.[0];
+    if (leistungsportal?.uri) {
+      hinweise.append(el("li", {},
+        link(leistungsportal.uri, "Leistungsbeschreibung im Serviceportal")));
+    }
+    if (m.source_id) {
+      hinweise.append(el("li", {}, "Datenquelle der Behördenzuordnung: " + m.source_id,
+        m.evidence_url ? " · " : null, m.evidence_url ? link(m.evidence_url, "Datenquelle öffnen") : null));
+    }
     const extra = el("div", { class: "extra" });
     const navi = el("a", { class: "navi", target: "_blank", rel: "noopener", href: navigationsLink(m, null, d.standort),
                            text: "Route in Google Maps" });
     karteEintrag.append(extra, navi);
     if (teile.filter((t) => t.classList && t.classList.contains("behoerde")).length < 3)
-      zusatzinfos(m, extra, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel);
-    teile.push(karteEintrag);
+      zusatzinfos(m, extra, hinweise, navi, d.standort, statusMarke, (d.leistung || {}).leistungsschluessel, zeigeOnline);
+    hinweise.hidden = !hinweise.childElementCount;
+    teile.push(karteEintrag, hinweise);
   }
   if (treffer.length > 5) teile.push(el("p", { class: "meta", text: `… und ${treffer.length - 5} weitere` }));
   if (d.fehler) teile.push(el("p", { class: "fehler", text: d.fehler }));
@@ -200,13 +213,13 @@ function zeige(d) {
 function navigationsLink(m, g, standort) {
   const p = new URLSearchParams({ api: "1", travelmode: "transit" });
   const k = m.kontakt || {};
-  if (g && g.gefunden && (g.adresse || g.place_id || g.lat == null)) {
+  if (k.adresse) {
+    p.set("destination", k.adresse);
+  } else if (g && g.gefunden && (g.adresse || g.place_id || g.lat == null)) {
     p.set("destination", g.adresse ? `${g.name || m.authority_name || ""}, ${g.adresse}` : (g.name || m.authority_name));
     if (g.place_id) p.set("destination_place_id", g.place_id);
   } else if (g && g.gefunden) {
     p.set("destination", `${g.lat},${g.lon}`);
-  } else if (k.adresse) {
-    p.set("destination", `${m.authority_name || ""}, ${k.adresse}`);
   } else if (m.geometry && m.geometry.type === "Point") {
     p.set("destination", `${m.geometry.coordinates[1]},${m.geometry.coordinates[0]}`);
   } else {
@@ -245,7 +258,7 @@ function zeigeStatus(marke, intervalle) {
   if (aktualisieren()) { const t = setInterval(() => { if (!aktualisieren()) clearInterval(t); }, 60000); }
 }
 
-async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika) {
+async function zusatzinfos(m, ziel, hinweise, navi, standort, statusMarke, leika, zeigeOnline) {
   const z = m.zentrum || (standort ? { lat: standort.lat, lon: standort.lon } : null);
   ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten werden geladen …" }));
   let g;
@@ -263,12 +276,13 @@ async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika) {
   if (a.oeffnungszeiten) g = { ...(g || {}), verfuegbar: true, gefunden: true, oeffnungszeiten: a.oeffnungszeiten,
                                intervalle: a.intervalle, zeiten_quelle: a.zeiten_quelle, zeiten_text: a.zeiten_text };
   if (!g || !g.verfuegbar || !g.gefunden) {
-    ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten: in den offenen Daten nicht gefunden – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.append(el("li", { text: "Öffnungszeiten: in den offenen Daten nicht gefunden – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.hidden = false;
     return;
   }
   navi.href = navigationsLink(m, g, standort);
   const k = m.kontakt || {};
-  if (g.adresse) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
+  if (g.adresse && !k.adresse) ziel.append(el("p", {}, el("b", { text: "Anschrift: " }), g.adresse));
   if (g.oeffnungszeiten && g.oeffnungszeiten.length) {
     const heute = (new Date().getDay() + 6) % 7;
     ziel.append(el("p", {}, el("b", { text: "Öffnungszeiten" })),
@@ -279,13 +293,19 @@ async function zusatzinfos(m, ziel, navi, standort, statusMarke, leika) {
     if (g.zeiten_text) ziel.append(el("p", { class: "quelle", text: "Originalangabe: „" + g.zeiten_text + "“" }));
     if (statusMarke) zeigeStatus(statusMarke, g.intervalle);
   } else {
-    ziel.append(el("p", { class: "quelle", text: "Öffnungszeiten: in den offenen Daten nicht eingetragen – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.append(el("li", { text: "Öffnungszeiten: in den offenen Daten nicht eingetragen – bitte auf der Webseite der Behörde prüfen." }));
+    hinweise.hidden = false;
   }
   if (g.telefon && !k.telefon) ziel.append(el("p", {}, "Tel. ", el("a", { href: "tel:" + g.telefon.replace(/[^\d+]/g, ""), text: g.telefon })));
   if (g.web && !k.web) ziel.append(el("p", {}, link(g.web, "Webseite")));
-  if (g.online_dienste && g.online_dienste.length)
-    ziel.append(el("p", {}, el("b", { text: "Online erledigen: " }),
-      ...g.online_dienste.flatMap((o, i) => [i ? " · " : null, link(o.uri, o.titel)]).filter(Boolean)));
+  if (g.online_dienste && g.online_dienste.length) {
+    const links = g.online_dienste.map(o => link(o.uri, o.titel)).filter(Boolean);
+    if (links.length) {
+      zeigeOnline?.();
+      ziel.append(el("p", {}, el("b", { text: "Online erledigen: " }),
+        ...links.flatMap((element, i) => i ? [" · ", element] : [element])));
+    }
+  }
   if (g.email && !k.email) ziel.append(el("p", {}, el("a", { href: "mailto:" + g.email, text: g.email })));
   const osm = g.quelle === "osm";
   if (g.quelle) ziel.append(el("p", { class: "quelle" }, "Zusatzinfos: ",

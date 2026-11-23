@@ -29,7 +29,7 @@ class FakePlaces:
 
     def details(self, name, adresse, zentrum, punkt=False):
         self.calls.append((name, adresse, zentrum))
-        return {"verfuegbar": True, "gefunden": True, "oeffnungszeiten": ["Montag: 08:00–12:00"]}
+        return {"verfuegbar": True, "gefunden": True, "adresse": adresse, "oeffnungszeiten": ["Montag: 08:00–12:00"]}
 
 
 class ServerTest(unittest.TestCase):
